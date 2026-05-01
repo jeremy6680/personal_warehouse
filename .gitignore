@@ -1,0 +1,15 @@
+# Python
+.venv/
+
+# dbt
+target/
+dbt_packages/
+logs/
+
+# OS
+.DS_Store
+
+# secrets
+.env
+
+data/

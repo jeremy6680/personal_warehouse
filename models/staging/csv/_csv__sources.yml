@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: csv
+    database: personal-warehouse-495013
+    schema: raw_personal
+    tables:
+      - name: goodreads
