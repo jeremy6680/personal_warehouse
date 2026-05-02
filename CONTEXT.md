@@ -18,50 +18,70 @@ It also serves as a **portfolio project** demonstrating dbt analytics engineerin
 
 ### Goodreads (`goodreads.csv`)
 - Exported from [goodreads.com](https://www.goodreads.com) via the account export feature
-- Contains: books read, personal ratings (1–5), shelves (`read` / `to-read` / `currently-reading`), dates added and read
+- Contains: books read, personal ratings (1–5), shelves (`read` / `to-read` / `currently-reading`), year published, publisher, ISBN
 - Primary use: reading history and ratings
+- Note: ISBN is exported in Excel `="..."` encoding — stripped in staging
 
 ### BookBuddy (`bookbuddy.csv`)
 - Exported from the BookBuddy iOS app
-- Contains: full book collection including unread books, richer metadata (genre, category, publisher, ISBN, tags, status, condition)
-- Complements Goodreads: broader collection scope, richer metadata, but less precise on reading dates
+- Contains: full book collection (read + unread), genre, category, status, rating (0–5), ISBN, tags
+- Complements Goodreads: broader collection scope, richer metadata, but no reading dates
 
 ### Letterboxd (`letterboxd.csv`)
 - Exported from [letterboxd.com](https://letterboxd.com) via the account export feature
-- Contains: movies watched with diary dates and personal ratings (0.5–5 stars)
+- Contains: movies watched with diary dates and personal ratings (0.5–5 half-stars), Letterboxd URI
 - Primary use: movie watching history and ratings
+- Note: export does not include TMDB IDs — title + year matching only
 
 ### MovieBuddy (`moviebuddy.csv`)
 - Exported from the MovieBuddy iOS app
-- Contains: full movie and TV collection including "Not Watched" status, rich metadata (director, cast, TMDB ID, genres, runtime, film rating)
-- Complements Letterboxd: covers wishlist/collection, richer metadata
+- Contains: full movie and TV collection (watched + wishlist), content type, director(s), genres, runtime, TMDB ID, rating (0–5)
+- Complements Letterboxd: covers wishlist/collection, richer metadata (director, cast, TMDB ID)
 
 ### MusicBuddy (`musicbuddy.csv`)
 - Exported from the MusicBuddy iOS app (backed by Discogs)
-- Contains: music album collection — artist, genre, style, tracks, format, Discogs release ID
-- Unique domain: no direct equivalent app for rating/diary, collection-oriented
+- Contains: music album collection — artist, genres, release year, Discogs release ID, rating (0–5)
+- Note: artist names may carry Discogs disambiguation suffixes (e.g., "Ayo (2)") — stripped in intermediate
 
 ---
 
 ## Goals
 
-### Phase 1 — Staging (current focus)
+### Phase 1 — Staging ✅ Complete
 - Clean and standardise every source CSV into a well-typed, consistently-named staging model
 - No joins, no business logic — purely rename, cast, deduplicate
+- Surrogate keys generated via `dbt_utils.generate_surrogate_key` on natural composite keys
 
-### Phase 2 — Intermediate
-- Unified book model merging Goodreads reading history with BookBuddy collection metadata
-- Unified movie model merging Letterboxd diary with MovieBuddy collection metadata
+### Phase 2 — Intermediate ✅ Complete
+- `int_books__unified` — merges Goodreads reading history with BookBuddy collection metadata; three-case union (matched / bookbuddy_only / goodreads_only); ISBN-first matching with title+author fallback; country enrichment via `author_countries` seed
+- `int_movies__unified` — merges MovieBuddy collection with Letterboxd diary; Letterboxd rewatches aggregated to one row per film; three-case union; title+year matching; country enrichment via `director_countries` seed
+- `int_music__collection` — MusicBuddy enriched with country of origin via `artist_countries` seed; artist display name with Discogs suffix stripped
 
-### Phase 3 — Mart
-- `mrt_books__reading_history` — books finished, with rating, genre, dates
-- `mrt_movies__watching_history` — movies watched, with rating, director, genre
-- `mrt_music__collection` — full album collection with genre and style breakdown
-- `mrt_media__cross_domain_summary` — cross-domain stats: items per domain, avg rating, monthly pace
+### Phase 3 — Mart (current focus)
+- `mrt_books__reading_history` — books finished, with rating, genre, dates (from `int_books__unified`)
+- `mrt_books__collection` — full book collection (read + unread) with metadata
+- `mrt_movies__watching_history` — movies watched with rating, director, genre, watch date
+- `mrt_movies__collection` — full movie/TV collection (watched + wishlist)
+- `mrt_music__collection` — full album collection with genre, style, artist, country
+- `mrt_media__summary` — cross-domain aggregate: counts, avg ratings, monthly pace per domain
 
 ### Long-term
 - Visualise in a BI tool (Looker Studio or Metabase) connected to BigQuery mart tables
 - Schedule automatic CSV refreshes and incremental loads
+
+---
+
+## Seeds
+
+Three reference CSVs live in `seeds/` and are managed by dbt (`dbt seed`):
+
+| Seed | Path | Used by |
+|---|---|---|
+| `author_countries` | `seeds/books/author_countries.csv` | `int_books__unified` |
+| `director_countries` | `seeds/films/director_countries.csv` | `int_movies__unified` |
+| `artist_countries` | `seeds/music/artist_countries.csv` | `int_music__collection` |
+
+These are manually maintained reference tables mapping names to countries of origin. Join is always case-insensitive (`lower/trim` on both sides).
 
 ---
 

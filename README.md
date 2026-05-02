@@ -11,7 +11,7 @@ Media-tracking apps (Goodreads, Letterboxd, BookBuddy, MovieBuddy, MusicBuddy) e
 1. Loads raw CSV exports into BigQuery (`raw_personal` dataset)
 2. Cleans and standardises the data in the **staging layer**
 3. Joins and enriches across sources in the **intermediate layer**
-4. Produces dashboard-ready models in the **mart layer**
+4. Produces dashboard-ready models in the **mart layer** *(in progress)*
 
 The end goal is a unified, queryable history of books read, movies watched, and music collected — with ratings, dates, and cross-domain analytics.
 
@@ -27,7 +27,7 @@ The end goal is a unified, queryable history of books read, movies watched, and 
 | `moviebuddy` | MovieBuddy | Full movie/TV collection (watched + wishlist) |
 | `musicbuddy` | MusicBuddy | Music album collection via Discogs |
 
-Raw CSV exports live in `data/` and are loaded into BigQuery manually (or via script). dbt never touches the raw files directly.
+Raw CSV exports live in `data/` and are loaded into BigQuery manually via `bq load`. dbt never touches the raw files directly.
 
 ---
 
@@ -55,13 +55,16 @@ dbt debug
 # 3. Install dbt packages
 dbt deps
 
-# 4. Run all models
+# 4. Load seeds (reference CSVs managed by dbt)
+dbt seed
+
+# 5. Run all models
 dbt run
 
-# 5. Test all models
+# 6. Test all models
 dbt test
 
-# 6. Run and test together
+# 7. Run and test together
 dbt build
 ```
 
@@ -83,9 +86,19 @@ See [NEXT_STEPS.md](NEXT_STEPS.md) for current priorities.
 | Layer | Model | Status |
 |---|---|---|
 | Staging | `stg_csv__goodreads` | Done |
-| Staging | `stg_csv__bookbuddy` | Pending |
-| Staging | `stg_csv__letterboxd` | Pending |
-| Staging | `stg_csv__moviebuddy` | Pending |
-| Staging | `stg_csv__musicbuddy` | Pending |
-| Intermediate | — | Not started |
-| Mart | — | Not started |
+| Staging | `stg_csv__bookbuddy` | Done |
+| Staging | `stg_csv__letterboxd` | Done |
+| Staging | `stg_csv__moviebuddy` | Done |
+| Staging | `stg_csv__musicbuddy` | Done |
+| Seeds | `author_countries` | Done |
+| Seeds | `director_countries` | Done |
+| Seeds | `artist_countries` | Done |
+| Intermediate | `int_books__unified` | Done |
+| Intermediate | `int_movies__unified` | Done |
+| Intermediate | `int_music__collection` | Done |
+| Mart | `mrt_books__reading_history` | Not started |
+| Mart | `mrt_books__collection` | Not started |
+| Mart | `mrt_movies__watching_history` | Not started |
+| Mart | `mrt_movies__collection` | Not started |
+| Mart | `mrt_music__collection` | Not started |
+| Mart | `mrt_media__summary` | Not started |

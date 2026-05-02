@@ -4,54 +4,54 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 
 ---
 
-## Staging layer
+## Staging layer ✅
 
-### Done
-
-- [x] `stg_csv__goodreads` — basic cast and rename
-
-### Done
-
-- [x] Expand `stg_csv__goodreads` — columns added as needed
-
-### Done
-
-- [x] `stg_csv__bookbuddy` — title, author, genre, category, status, rating, `is_favorite`, ISBN, tags, `date_started`, `date_finished`
-- [x] `stg_csv__letterboxd` — `watched_date`, `film_name`, `release_year`, `letterboxd_uri`, `rating`
-- [x] `stg_csv__moviebuddy` — title, `content_type`, `release_year`, `status`, `rating`, `is_favorite`, directors, genres, `runtime_minutes`, `tmdb_id`, `date_finished`
-- [x] `stg_csv__musicbuddy` — title, artist, genres, styles, `release_year`, format, `discogs_release_id`, `rating`
-- [x] Add YAML documentation and tests for all staging models in `_csv__sources.yml`
+- [x] `stg_csv__goodreads` — book_id, title, author, year_published, publisher, isbn, rating, source_name
+- [x] `stg_csv__bookbuddy` — book_id (surrogate), title, author, genre, category, status, rating, isbn, tags
+- [x] `stg_csv__letterboxd` — movie_id (surrogate), watched_date, film_name, release_year, letterboxd_uri, rating
+- [x] `stg_csv__moviebuddy` — movie_id (surrogate), title, content_type, release_year, rating, directors, genres, runtime_minutes, tmdb_id
+- [x] `stg_csv__musicbuddy` — album_id (surrogate), title, artist, genres, release_year, discogs_release_id, rating
+- [x] YAML documentation and tests for all staging models in `_csv__sources.yml`
 - [x] Load all five CSVs into BigQuery `raw_personal` dataset via `bq load`
 
 ---
 
-## Intermediate layer
+## Seeds ✅
 
-### Done
+- [x] `seeds/books/author_countries.csv` — author → country mapping for `int_books__unified`
+- [x] `seeds/films/director_countries.csv` — director → country mapping for `int_movies__unified`
+- [x] `seeds/music/artist_countries.csv` — artist → country mapping for `int_music__collection`
+- [x] `seeds/_seeds.yml` — YAML documentation and tests for all seeds
 
-- [x] `int_books__collection_with_history` — merge BookBuddy collection with Goodreads reading history (join on ISBN; fallback to title + author)
-- [x] `int_movies__collection_with_diary` — merge MovieBuddy collection with Letterboxd diary (join on title + year; TMDB-based matching deferred — Letterboxd exports don't include TMDB IDs)
+---
+
+## Intermediate layer ✅
+
+- [x] `int_books__unified` — three-case union (matched / bookbuddy_only / goodreads_only); ISBN-first matching with title+author fallback; country from `author_countries` seed
+- [x] `int_movies__unified` — three-case union (matched / moviebuddy_only / letterboxd_only); Letterboxd rewatches aggregated before matching; title+year matching; country from `director_countries` seed
+- [x] `int_music__collection` — MusicBuddy enriched with country from `artist_countries` seed; `artist_display` strips Discogs disambiguation suffixes
+- [x] YAML documentation and tests for all intermediate models in `_intermediate__models.yml`
 
 ---
 
 ## Mart layer
 
-- [ ] `mrt_books__reading_history` — finished books with rating, genre, dates (from intermediate books model)
-- [ ] `mrt_books__collection` — full book collection (read + unread) with metadata
-- [ ] `mrt_movies__watching_history` — movies watched with rating, director, genre, watch date
-- [ ] `mrt_movies__collection` — full movie/TV collection (watched + wishlist)
-- [ ] `mrt_music__collection` — full album collection with genre, style, artist
-- [ ] `mrt_media__summary` — cross-domain aggregate: counts, avg ratings, monthly pace per domain
+- [ ] `mrt_books__reading_history` — finished books with rating, genre, dates (source: `int_books__unified` filtered to `status = 'Read'`)
+- [ ] `mrt_books__collection` — full book collection (read + unread) with metadata, country, ratings from both sources
+- [ ] `mrt_movies__watching_history` — movies watched with rating, director, genre, watch date (source: `int_movies__unified` filtered to rows with `first_watched_date IS NOT NULL`)
+- [ ] `mrt_movies__collection` — full movie/TV collection (watched + wishlist) with metadata
+- [ ] `mrt_music__collection` — full album collection with genre, artist_display, country
+- [ ] `mrt_media__summary` — cross-domain aggregate: item counts, avg ratings, monthly pace per domain
 
 ---
 
 ## Infrastructure and tooling
 
-- [ ] Set up `packages.yml` with `dbt_utils` and `dbt_expectations`
-- [ ] Run `dbt deps` to install packages
+- [x] `packages.yml` configured with `dbt_utils` and `dbt_expectations`
+- [x] `dbt deps` — packages installed
 - [ ] Set up `.sqlfluff` for SQL linting
-- [ ] Confirm `profiles.yml` is configured and `dbt debug` passes against BigQuery
 - [ ] Add `bq load` commands or a shell script to reload CSVs into `raw_personal`
+- [ ] Confirm `dbt build` passes end-to-end against BigQuery
 
 ---
 
@@ -60,3 +60,4 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 - [ ] Looker Studio or Metabase dashboard connected to mart tables
 - [ ] Schedule CSV refresh + `dbt build` (cron or Cloud Scheduler)
 - [ ] Explore Spotify API via Airbyte to replace/supplement MusicBuddy CSV
+- [ ] TMDB-based movie matching once Letterboxd exports include TMDB IDs
