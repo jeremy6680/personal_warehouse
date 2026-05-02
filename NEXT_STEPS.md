@@ -34,14 +34,14 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 
 ---
 
-## Mart layer
+## Mart layer ✅
 
-- [ ] `mrt_books__reading_history` — finished books with rating, genre, dates (source: `int_books__unified` filtered to `status = 'Read'`)
-- [ ] `mrt_books__collection` — full book collection (read + unread) with metadata, country, ratings from both sources
-- [ ] `mrt_movies__watching_history` — movies watched with rating, director, genre, watch date (source: `int_movies__unified` filtered to rows with `first_watched_date IS NOT NULL`)
-- [ ] `mrt_movies__collection` — full movie/TV collection (watched + wishlist) with metadata
-- [ ] `mrt_music__collection` — full album collection with genre, artist_display, country
-- [ ] `mrt_media__summary` — cross-domain aggregate: item counts, avg ratings, monthly pace per domain
+- [x] `mrt_books__reading_history` — finished books with rating, genre, dates (source: `int_books__unified` filtered to `status = 'Read'`)
+- [x] `mrt_books__collection` — full book collection (read + unread) with metadata, country, ratings from both sources
+- [x] `mrt_movies__watching_history` — movies watched with rating, director, genre, watch date (source: `int_movies__unified` filtered to rows with `first_watched_date IS NOT NULL`)
+- [x] `mrt_movies__collection` — full movie/TV collection (watched + wishlist) with metadata
+- [x] `mrt_music__collection` — full album collection with genre, artist_display, country
+- [x] `mrt_media__summary` — cross-domain aggregate: item counts, avg ratings, monthly pace per domain
 
 ---
 
@@ -57,6 +57,7 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 
 ## Future / nice to have
 
+- [ ] `seeds/films/film_countries.csv` — (title, release_year, country) mapping for Letterboxd-only films that have no director in `director_countries`; same pattern as existing seeds
 - [ ] Looker Studio or Metabase dashboard connected to mart tables
 - [ ] Schedule CSV refresh + `dbt build` (cron or Cloud Scheduler)
 - [ ] Explore Spotify API via Airbyte to replace/supplement MusicBuddy CSV

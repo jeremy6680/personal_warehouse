@@ -1,0 +1,258 @@
+version: 2
+
+models:
+
+  # ── Books ─────────────────────────────────────────────────────────────────
+
+  - name: mrt_books__collection
+    description: >
+      Full book collection — all statuses (Read, Unread, Reading, Did Not Finish).
+      Single unified rating: Goodreads is the source of truth when both sources
+      have a rating, otherwise BookBuddy rating is used. rating is null for
+      unrated books. source indicates which app(s) contributed the row.
+    config:
+      materialized: table
+      tags: ["mart", "books"]
+    columns:
+      - name: book_id
+        description: Surrogate key derived from title + author. Consistent across sources.
+        tests:
+          - unique
+          - not_null
+      - name: title
+        description: Book title.
+        tests:
+          - not_null
+      - name: author
+        description: Primary author name.
+      - name: genre
+        description: Genre from BookBuddy. Null for Goodreads-only rows.
+      - name: category
+        description: User-defined category from BookBuddy. Null for Goodreads-only rows.
+      - name: status
+        description: Reading status from BookBuddy. Null for Goodreads-only rows.
+        tests:
+          - accepted_values:
+              values: ["Read", "Unread", "Reading", "Did Not Finish"]
+              config:
+                where: "status IS NOT NULL"
+      - name: is_read
+        description: True if status = 'Read'.
+      - name: rating
+        description: >
+          Unified personal rating on a 1–5 scale. Goodreads rating is used when
+          available; otherwise BookBuddy rating is used. Null if the book is unrated
+          in both sources.
+      - name: is_rated
+        description: True if rating is not null.
+      - name: year_published
+        description: Publication year from Goodreads. Null for BookBuddy-only rows.
+      - name: publisher
+        description: Publisher name from Goodreads. Null for BookBuddy-only rows.
+      - name: isbn
+        description: ISBN. From BookBuddy when present, otherwise from Goodreads.
+      - name: tags
+        description: Comma-separated user tags from BookBuddy. Null for Goodreads-only rows.
+      - name: country
+        description: Country of the author, joined from the author_countries seed. Null if not in seed.
+      - name: source
+        description: >
+          Which app(s) contributed this row.
+          'bookbuddy_and_goodreads' — matched across both sources.
+          'goodreads' — only in Goodreads export.
+          'bookbuddy' — only in BookBuddy.
+        tests:
+          - accepted_values:
+              values: ["bookbuddy_and_goodreads", "goodreads", "bookbuddy"]
+      - name: goodreads_id
+        description: Goodreads string book ID. Null for BookBuddy-only rows.
+
+  # ── Movies ────────────────────────────────────────────────────────────────
+
+  - name: mrt_movies__collection
+    description: >
+      Full movie and TV show collection — watched and wishlist items. Single unified
+      rating: Letterboxd is the source of truth when both sources have a rating,
+      otherwise MovieBuddy rating is used. rating is null for unrated items.
+      source indicates which app(s) contributed the row.
+    config:
+      materialized: table
+      tags: ["mart", "movies"]
+    columns:
+      - name: movie_id
+        description: Surrogate key derived from title + release_year.
+        tests:
+          - unique
+          - not_null
+      - name: title
+        description: Film or show title.
+        tests:
+          - not_null
+      - name: content_type
+        description: Media type from MovieBuddy (Movie or TV Show). Null for Letterboxd-only rows.
+        tests:
+          - accepted_values:
+              values: ["Movie", "TV Show"]
+              config:
+                where: "content_type IS NOT NULL"
+      - name: release_year
+        description: Release year.
+      - name: is_watched
+        description: True if the item has at least one Letterboxd diary entry.
+      - name: first_watched_date
+        description: Earliest Letterboxd diary entry date. Null for unwatched items.
+      - name: last_watched_date
+        description: Most recent Letterboxd diary entry date. Null for unwatched items.
+      - name: rating
+        description: >
+          Unified personal rating on a 0.5–5 scale. Letterboxd rating is used when
+          available; otherwise MovieBuddy rating is used. Null if the item is unrated
+          in both sources.
+      - name: is_rated
+        description: True if rating is not null.
+      - name: directors
+        description: Comma-separated director names from MovieBuddy. Null for Letterboxd-only rows.
+      - name: genres
+        description: Comma-separated genres from MovieBuddy. Null for Letterboxd-only rows.
+      - name: runtime_minutes
+        description: Runtime in minutes from MovieBuddy. Null for Letterboxd-only rows.
+      - name: tmdb_id
+        description: TMDB identifier from MovieBuddy. Null for Letterboxd-only rows.
+      - name: letterboxd_uri
+        description: Letterboxd URI from the most recent diary entry. Null for unwatched items.
+      - name: country
+        description: >
+          Country of the primary director from the director_countries seed. Populated
+          for MovieBuddy and matched rows only. Letterboxd-only rows have no director
+          data — enrich via a film_countries seed or TMDB API to cover these.
+      - name: source
+        description: >
+          Which app(s) contributed this row.
+          'moviebuddy_and_letterboxd' — matched across both sources.
+          'letterboxd' — only in Letterboxd diary.
+          'moviebuddy' — only in MovieBuddy collection.
+        tests:
+          - accepted_values:
+              values: ["moviebuddy_and_letterboxd", "letterboxd", "moviebuddy"]
+
+  # ── Music ─────────────────────────────────────────────────────────────────
+
+  - name: mrt_music__collection
+    description: >
+      Full album collection from MusicBuddy, enriched with country. artist is the
+      display name with Discogs disambiguation suffix stripped (e.g. "Creed" not
+      "Creed (3)"). rating is null for unrated albums.
+    config:
+      materialized: table
+      tags: ["mart", "music"]
+    columns:
+      - name: album_id
+        description: Surrogate key derived from title + artist (raw, with disambiguation suffix).
+        tests:
+          - unique
+          - not_null
+      - name: title
+        description: Album or release title.
+        tests:
+          - not_null
+      - name: artist
+        description: Artist display name with Discogs disambiguation suffix stripped.
+        tests:
+          - not_null
+      - name: genres
+        description: Comma-separated genres. Null if not set in MusicBuddy.
+      - name: release_year
+        description: Original release year.
+      - name: discogs_release_id
+        description: Discogs release identifier. Null if not matched.
+      - name: rating
+        description: Personal rating on a 1–5 scale. Null for unrated albums (MusicBuddy stores 0 for unrated).
+      - name: is_rated
+        description: True if rating is not null.
+      - name: country
+        description: Country of the artist from the artist_countries seed. Null if not in seed.
+      - name: source
+        description: Always 'musicbuddy' — single source domain.
+        tests:
+          - accepted_values:
+              values: ["musicbuddy"]
+
+  # ── Cross-domain ──────────────────────────────────────────────────────────
+
+  - name: mrt_media__country_index
+    description: >
+      Cross-domain country spine — one row per (country, domain, item). Links each
+      country to all books, films, and albums associated with it. person_name is the
+      author (books), primary director (movies), or artist (music). Only rows with
+      a known country are included. Enables country-centric queries across all media
+      types without joining three mart tables at query time.
+    config:
+      materialized: table
+      tags: ["mart", "cross_domain"]
+    columns:
+      - name: country
+        description: Country name from the author/director/artist seed.
+        tests:
+          - not_null
+      - name: domain
+        description: Media domain — books, movies, or music.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["books", "movies", "music"]
+      - name: item_id
+        description: Domain-specific surrogate key (book_id, movie_id, or album_id).
+        tests:
+          - not_null
+      - name: item_title
+        description: Title of the book, film, or album.
+        tests:
+          - not_null
+      - name: person_name
+        description: Author (books), primary director (movies), or artist (music) associated with this item.
+      - name: person_role
+        description: Role of the person — 'author', 'director', or 'artist'.
+        tests:
+          - accepted_values:
+              values: ["author", "director", "artist"]
+      - name: rating
+        description: Unified personal rating (null if unrated). Same scale as the domain mart.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ["country", "domain", "item_id"]
+
+  - name: mrt_media__summary
+    description: >
+      Cross-domain aggregate — one row per media domain (books, movies, music).
+      Summarises total item counts, consumed vs. pending items (read for books,
+      watched for movies; null for music which has no consumption tracking),
+      rated item counts, average unified rating, and country coverage.
+    config:
+      materialized: table
+      tags: ["mart", "cross_domain"]
+    columns:
+      - name: domain
+        description: Media domain identifier.
+        tests:
+          - unique
+          - not_null
+          - accepted_values:
+              values: ["books", "movies", "music"]
+      - name: total_items
+        description: Total number of items in the collection for this domain.
+        tests:
+          - not_null
+      - name: items_consumed
+        description: >
+          Items consumed: books read, movies watched.
+          Null for music (no consumption tracking in MusicBuddy).
+      - name: items_pending
+        description: >
+          Items not yet consumed: unread books, unwatched movies.
+          Null for music.
+      - name: items_rated
+        description: Number of items with a non-null unified rating.
+      - name: avg_rating
+        description: Average unified rating across rated items. Null if no items are rated.
+      - name: items_with_country
+        description: Number of items where the author/director/artist country is known.
