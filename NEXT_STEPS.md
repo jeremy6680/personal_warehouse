@@ -7,18 +7,21 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 ## Staging layer
 
 ### Done
+
 - [x] `stg_csv__goodreads` — basic cast and rename
 
-### In progress
-- [ ] Expand `stg_csv__goodreads` — currently minimal; add `date_read`, `date_added`, `exclusive_shelf`, `average_rating`, `num_pages`, `original_publication_year`
+### Done
 
-### Pending
-- [ ] `stg_csv__bookbuddy` — clean BookBuddy export: title, author, genre, category, status (`Unread` / `Read`), rating, `date_started`, `date_finished`, `tags`, ISBN, `is_favorite`
-- [ ] `stg_csv__letterboxd` — clean Letterboxd export: `watched_date`, `film_name`, `release_year`, `letterboxd_uri`, `rating` (normalise 0.5–5 scale)
-- [ ] `stg_csv__moviebuddy` — clean MovieBuddy export: title, `content_type` (Movie/TV), `release_year`, `status`, `rating`, directors, genres, `tmdb_id`, runtime
-- [ ] `stg_csv__musicbuddy` — clean MusicBuddy export: title, artist, genres, styles, `release_year`, format, `discogs_release_id`, `rating`
-- [ ] Add YAML documentation and tests for all staging models in `_csv__sources.yml`
-- [ ] Load all five CSVs into BigQuery `raw_personal` dataset via `bq load`
+- [x] Expand `stg_csv__goodreads` — columns added as needed
+
+### Done
+
+- [x] `stg_csv__bookbuddy` — title, author, genre, category, status, rating, `is_favorite`, ISBN, tags, `date_started`, `date_finished`
+- [x] `stg_csv__letterboxd` — `watched_date`, `film_name`, `release_year`, `letterboxd_uri`, `rating`
+- [x] `stg_csv__moviebuddy` — title, `content_type`, `release_year`, `status`, `rating`, `is_favorite`, directors, genres, `runtime_minutes`, `tmdb_id`, `date_finished`
+- [x] `stg_csv__musicbuddy` — title, artist, genres, styles, `release_year`, format, `discogs_release_id`, `rating`
+- [x] Add YAML documentation and tests for all staging models in `_csv__sources.yml`
+- [x] Load all five CSVs into BigQuery `raw_personal` dataset via `bq load`
 
 ---
 

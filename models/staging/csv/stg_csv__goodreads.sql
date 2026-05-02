@@ -1,12 +1,30 @@
-select
-    cast(`Book Id` as string) as book_id,
-    trim(`Title`) as title,
-    trim(`Author`) as author,
-    safe_cast(trim(cast(`Year Published` as string)) as int64) as year_published,
-    trim(`Publisher`) as publisher,
-    nullif(
-        regexp_replace(`ISBN`, r'^="?|"$', ''),
-        ''
-    ) as isbn,
-    safe_cast(trim(cast(`My Rating` as string)) as int64) as my_rating
-from {{ source('csv', 'goodreads') }}
+-- ============================================================
+-- Model: stg_csv__goodreads
+-- Layer: Staging
+-- Description: Goodreads library export, cleaned and typed.
+--              Selects relevant fields, renames to snake_case, casts types.
+-- Source: csv.goodreads
+-- Adapter note: ISBN column is stored as Excel-quoted string (="...") —
+--               regexp_replace strips the surrounding ="..." wrapper.
+-- ============================================================
+
+WITH
+
+source AS (
+    SELECT * FROM {{ source('csv', 'goodreads') }}
+),
+
+renamed AS (
+    SELECT
+        CAST(`Book Id` AS STRING)                                               AS book_id,
+        trim(`Title`)                                                           AS title,
+        trim(`Author`)                                                          AS author,
+        safe_cast(trim(CAST(`Year Published` AS STRING)) AS INT64)              AS year_published,
+        trim(`Publisher`)                                                       AS publisher,
+        nullif(regexp_replace(`ISBN`, r'^="?|"$', ''), '')                      AS isbn,
+        safe_cast(trim(CAST(`My Rating` AS STRING)) AS INT64)                   AS rating,
+        'goodreads'                                                             AS source_name
+    FROM source
+)
+
+SELECT * FROM renamed

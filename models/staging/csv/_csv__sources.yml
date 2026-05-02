@@ -2,7 +2,176 @@ version: 2
 
 sources:
   - name: csv
+    description: Personal media collection exports loaded into BigQuery via bq load.
     database: personal-warehouse-495013
     schema: raw_personal
     tables:
       - name: goodreads
+        description: Goodreads library export — books read and rated.
+      - name: bookbuddy
+        description: BookBuddy collection export — full book library with reading status and metadata.
+      - name: letterboxd
+        description: Letterboxd diary export — films watched with ratings.
+      - name: moviebuddy
+        description: MovieBuddy collection export — full movie and TV library with watch status and metadata.
+      - name: musicbuddy
+        description: MusicBuddy collection export — vinyl and album collection with ratings.
+
+models:
+  - name: stg_csv__goodreads
+    description: >
+      Goodreads library export, cleaned and typed.
+      Renames columns to snake_case, casts types, and strips Excel-style ISBN encoding.
+    config:
+      materialized: view
+      tags: ["staging", "books"]
+    columns:
+      - name: book_id
+        description: Unique Goodreads book identifier.
+        tests:
+          - unique
+          - not_null
+      - name: title
+        description: Book title.
+        tests:
+          - not_null
+      - name: author
+        description: Primary author name.
+      - name: year_published
+        description: Year the edition was published.
+      - name: publisher
+        description: Publisher name.
+      - name: isbn
+        description: ISBN, with Excel ="..." encoding stripped.
+      - name: my_rating
+        description: Personal rating on a 1–5 scale. 0 means unrated.
+      - name: source_name
+        description: Hardcoded source identifier — always 'goodreads'.
+
+  - name: stg_csv__bookbuddy
+    description: >
+      BookBuddy collection export, cleaned and typed.
+      Selects title, author, genre, category, status, rating, ISBN, and tags.
+    config:
+      materialized: view
+      tags: ["staging", "books"]
+    columns:
+      - name: book_id
+        description: Surrogate key derived from title and author.
+        tests:
+          - unique
+          - not_null
+      - name: title
+        description: Book title.
+        tests:
+          - not_null
+      - name: author
+        description: Primary author name.
+      - name: genre
+        description: Genre as entered in BookBuddy. Null if not set.
+      - name: category
+        description: User-defined category (e.g., Sports, Fiction). Null if not set.
+      - name: status
+        description: Reading status.
+        tests:
+          - accepted_values:
+              values: ["Read", "Unread", "Reading", "Did Not Finish"]
+      - name: rating
+        description: Personal rating on a 0–5 scale. 0 means unrated.
+      - name: isbn
+        description: ISBN. Null if not set.
+      - name: tags
+        description: Comma-separated user tags. Null if not set.
+
+  - name: stg_csv__letterboxd
+    description: >
+      Letterboxd diary export, cleaned and typed.
+      Contains watched films with date, rating, and Letterboxd URI.
+    config:
+      materialized: view
+      tags: ["staging", "movies"]
+    columns:
+      - name: movie_id
+        description: Surrogate key derived from watched_date and film_name — unique per diary entry.
+        tests:
+          - unique
+          - not_null
+      - name: watched_date
+        description: Date the film was logged as watched.
+        tests:
+          - not_null
+      - name: film_name
+        description: Film title as listed on Letterboxd.
+        tests:
+          - not_null
+      - name: release_year
+        description: Film release year.
+      - name: letterboxd_uri
+        description: Short URI to the Letterboxd film page.
+      - name: rating
+        description: Personal rating on a 0.5–5 scale (half-star increments). Null if unrated.
+
+  - name: stg_csv__moviebuddy
+    description: >
+      MovieBuddy collection export, cleaned and typed.
+      Covers both movies and TV shows, with rating, genres, directors, and TMDB ID.
+    config:
+      materialized: view
+      tags: ["staging", "movies"]
+    columns:
+      - name: movie_id
+        description: Surrogate key derived from title and release_year.
+        tests:
+          - unique
+          - not_null
+      - name: title
+        description: Title of the movie or TV show.
+        tests:
+          - not_null
+      - name: content_type
+        description: Media type — Movie or TV Show.
+        tests:
+          - accepted_values:
+              values: ["Movie", "TV Show"]
+      - name: release_year
+        description: Release year of the movie or TV show.
+      - name: rating
+        description: Personal rating on a 0–5 scale. 0 means unrated.
+      - name: directors
+        description: Comma-separated director names. Null if not set.
+      - name: genres
+        description: Comma-separated genres. Null if not set.
+      - name: runtime_minutes
+        description: Runtime in minutes.
+      - name: tmdb_id
+        description: TMDB identifier. Null if not matched.
+
+  - name: stg_csv__musicbuddy
+    description: >
+      MusicBuddy collection export, cleaned and typed.
+      Covers albums and releases with artist, genres, and Discogs ID.
+    config:
+      materialized: view
+      tags: ["staging", "music"]
+    columns:
+      - name: album_id
+        description: Surrogate key derived from title and artist.
+        tests:
+          - unique
+          - not_null
+      - name: title
+        description: Album or release title.
+        tests:
+          - not_null
+      - name: artist
+        description: Primary artist name.
+        tests:
+          - not_null
+      - name: genres
+        description: Comma-separated genres (e.g., Rock, Jazz). Null if not set.
+      - name: release_year
+        description: Original release year.
+      - name: discogs_release_id
+        description: Discogs release identifier. Null if not matched.
+      - name: rating
+        description: Personal rating on a 0–5 scale. 0 means unrated.
