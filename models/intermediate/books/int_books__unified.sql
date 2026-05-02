@@ -7,8 +7,8 @@
 --                - matched: one row per book with columns from both sources
 --                - bookbuddy_only: in BookBuddy but not found in Goodreads
 --                - goodreads_only: in Goodreads but not found in BookBuddy
---              The book_id is always derived from title + author so it is
---              consistent regardless of which source(s) a book comes from.
+--              BookBuddy book_id is derived from title + author + isbn;
+--              Goodreads-only rows use title + author (no isbn available).
 --              country is joined from the author_countries seed on normalized author.
 -- Dependencies: stg_csv__bookbuddy, stg_csv__goodreads, author_countries
 -- Adapter note: Works on BigQuery, DuckDB, and PostgreSQL.

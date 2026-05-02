@@ -57,7 +57,7 @@ models:
       tags: ["staging", "books"]
     columns:
       - name: book_id
-        description: Surrogate key derived from title and author.
+        description: Surrogate key derived from title, author, and isbn — distinguishes different editions of the same title.
         tests:
           - unique
           - not_null
@@ -155,7 +155,7 @@ models:
       tags: ["staging", "music"]
     columns:
       - name: album_id
-        description: Surrogate key derived from title and artist.
+        description: Surrogate key derived from title, artist, and discogs_release_id — distinguishes different releases of the same album.
         tests:
           - unique
           - not_null

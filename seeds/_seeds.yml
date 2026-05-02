@@ -5,8 +5,10 @@ seeds:
     description: >
       Manual mapping of author names to their country of origin or nationality.
       Used to enrich int_books__unified with a country dimension.
-      Values must match the author field in BookBuddy and Goodreads sources exactly
-      (case-insensitive — the join normalizes both sides with lower/trim).
+      Values must be case-insensitively unique — the join normalizes both sides with
+      lower/trim, so "Young-Ha Kim" and "Young-ha Kim" are the same key and would
+      fan out every matching row. The unique test on author covers exact duplicates
+      only; verify lowercase uniqueness manually when adding new rows.
     config:
       tags: ["seeds", "books", "reference"]
     columns:

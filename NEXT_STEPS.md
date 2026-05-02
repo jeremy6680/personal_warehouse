@@ -52,7 +52,7 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 - [x] `dbt deps` — packages installed
 - [x] `.sqlfluff` — configured with dbt templater, BigQuery dialect, project style rules
 - [x] `scripts/bq_load.sh` — loads all 5 CSVs into `raw_personal` via `bq load --replace`; supports `--dry-run`
-- [ ] Confirm `dbt build` passes end-to-end against BigQuery
+- [x] Confirm `dbt build` passes end-to-end against BigQuery
 
 ---
 
