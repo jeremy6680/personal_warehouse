@@ -27,8 +27,10 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 
 ## Intermediate layer
 
-- [ ] `int_books__collection_with_history` — merge BookBuddy collection with Goodreads reading history (join on ISBN; fallback to title + author)
-- [ ] `int_movies__collection_with_diary` — merge MovieBuddy collection with Letterboxd diary (join on TMDB ID; fallback to title + year)
+### Done
+
+- [x] `int_books__collection_with_history` — merge BookBuddy collection with Goodreads reading history (join on ISBN; fallback to title + author)
+- [x] `int_movies__collection_with_diary` — merge MovieBuddy collection with Letterboxd diary (join on title + year; TMDB-based matching deferred — Letterboxd exports don't include TMDB IDs)
 
 ---
 

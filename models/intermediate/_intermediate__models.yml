@@ -1,0 +1,105 @@
+version: 2
+
+models:
+  - name: int_books__unified
+    description: >
+      Full union of BookBuddy and Goodreads, deduplicated to one row per book.
+      Three cases: matched (both sources), bookbuddy_only, goodreads_only.
+      Matching is attempted first on ISBN, then on normalized title + author.
+      The book_id is always a title+author surrogate so it is consistent
+      regardless of which source(s) a book comes from.
+    config:
+      tags: ["intermediate", "books"]
+    columns:
+      - name: book_id
+        description: >
+          Surrogate key derived from title + author (same formula as BookBuddy).
+          For Goodreads-only rows the key is generated from the Goodreads title
+          and author, ensuring uniqueness across the full union.
+        tests:
+          - unique
+          - not_null
+      - name: title
+        description: Book title. Sourced from BookBuddy when present, otherwise from Goodreads.
+        tests:
+          - not_null
+      - name: author
+        description: Primary author name. Sourced from BookBuddy when present, otherwise from Goodreads.
+      - name: genre
+        description: Genre from BookBuddy. Null for Goodreads-only rows.
+      - name: category
+        description: User-defined category from BookBuddy. Null for Goodreads-only rows.
+      - name: status
+        description: Reading status from BookBuddy (Read, Unread, Reading, Did Not Finish). Null for Goodreads-only rows.
+      - name: rating
+        description: Personal rating from BookBuddy on a 0–5 scale. Null for Goodreads-only rows.
+      - name: isbn
+        description: ISBN from BookBuddy, or from Goodreads for Goodreads-only rows.
+      - name: tags
+        description: Comma-separated user tags from BookBuddy. Null for Goodreads-only rows.
+      - name: goodreads_id
+        description: Goodreads string book ID. Null for BookBuddy-only rows.
+      - name: year_published
+        description: Publication year from Goodreads. Null for BookBuddy-only rows.
+      - name: publisher
+        description: Publisher name from Goodreads. Null for BookBuddy-only rows.
+      - name: goodreads_rating
+        description: Personal Goodreads rating (1–5 scale). Null for BookBuddy-only rows or if unrated.
+      - name: match_type
+        description: >
+          Cross-source join strategy.
+          'isbn' — matched on ISBN.
+          'title_author' — matched on normalized title + author.
+          null — book found in only one source (no cross-source match).
+
+  - name: int_movies__collection_with_diary
+    description: >
+      Full union of MovieBuddy and Letterboxd, deduplicated to one row per film.
+      Three cases: matched (both sources), moviebuddy_only, letterboxd_only.
+      Letterboxd diary entries are aggregated before matching so that rewatches
+      of the same film are collapsed to one row. Matching is on normalized title
+      + release_year. The movie_id is always a title+release_year surrogate so
+      it is consistent regardless of which source(s) a film comes from.
+    config:
+      tags: ["intermediate", "movies"]
+    columns:
+      - name: movie_id
+        description: >
+          Surrogate key derived from title + release_year (same formula as MovieBuddy).
+          For Letterboxd-only rows the key is generated from film_name + release_year.
+        tests:
+          - unique
+          - not_null
+      - name: title
+        description: Film title. From MovieBuddy when present, otherwise from Letterboxd.
+        tests:
+          - not_null
+      - name: content_type
+        description: Media type from MovieBuddy (Movie or TV Show). Null for Letterboxd-only rows.
+      - name: release_year
+        description: Release year. Sourced from whichever source has the record.
+      - name: rating
+        description: Personal rating from MovieBuddy on a 0–5 scale. Null for Letterboxd-only rows.
+      - name: directors
+        description: Comma-separated director names from MovieBuddy. Null for Letterboxd-only rows.
+      - name: genres
+        description: Comma-separated genres from MovieBuddy. Null for Letterboxd-only rows.
+      - name: runtime_minutes
+        description: Runtime in minutes from MovieBuddy. Null for Letterboxd-only rows.
+      - name: tmdb_id
+        description: TMDB identifier from MovieBuddy. Null for Letterboxd-only rows.
+      - name: first_watched_date
+        description: Earliest watch date across all Letterboxd diary entries. Null for MovieBuddy-only rows.
+      - name: last_watched_date
+        description: Most recent watch date from Letterboxd. Null for MovieBuddy-only rows.
+      - name: watch_count
+        description: Total Letterboxd diary entries for this film (rewatches counted). Null for MovieBuddy-only rows.
+      - name: letterboxd_rating
+        description: Rating from the most recent Letterboxd diary entry. Null if unrated or MovieBuddy-only.
+      - name: letterboxd_uri
+        description: Letterboxd URI from the most recent diary entry. Null for MovieBuddy-only rows.
+      - name: match_type
+        description: >
+          Cross-source join strategy.
+          'title_year' — matched on normalized title + release_year.
+          null — film found in only one source (no cross-source match).
