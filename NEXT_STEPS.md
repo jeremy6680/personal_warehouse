@@ -42,6 +42,7 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 - [x] `mrt_movies__collection` — full movie/TV collection (watched + wishlist) with metadata
 - [x] `mrt_music__collection` — full album collection with genre, artist_display, country
 - [x] `mrt_media__summary` — cross-domain aggregate: item counts, avg ratings, monthly pace per domain
+- [x] `mrt_media__country_index` — cross-domain country spine: one row per (country, domain, item) across books, movies, and music
 
 ---
 
@@ -49,8 +50,8 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 
 - [x] `packages.yml` configured with `dbt_utils` and `dbt_expectations`
 - [x] `dbt deps` — packages installed
-- [ ] Set up `.sqlfluff` for SQL linting
-- [ ] Add `bq load` commands or a shell script to reload CSVs into `raw_personal`
+- [x] `.sqlfluff` — configured with dbt templater, BigQuery dialect, project style rules
+- [x] `scripts/bq_load.sh` — loads all 5 CSVs into `raw_personal` via `bq load --replace`; supports `--dry-run`
 - [ ] Confirm `dbt build` passes end-to-end against BigQuery
 
 ---
