@@ -136,9 +136,11 @@ models:
         tests:
           - not_null
       - name: artist
-        description: Primary artist name.
+        description: Raw artist name as exported from MusicBuddy, including Discogs disambiguation suffix (e.g. "Ayo (2)"). Used as join key and for surrogate key stability.
         tests:
           - not_null
+      - name: artist_display
+        description: Artist name with Discogs disambiguation suffix stripped (e.g. "Ayo (2)" → "Ayo"). Use this column for display and reporting.
       - name: genres
         description: Comma-separated genres. Null if not set.
       - name: release_year

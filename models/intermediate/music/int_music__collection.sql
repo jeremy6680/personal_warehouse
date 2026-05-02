@@ -3,7 +3,9 @@
 -- Layer: Intermediate
 -- Description: MusicBuddy collection enriched with artist country of origin.
 --              country is joined from the artist_countries seed on normalized
---              artist name. Single-source model — Discogs API enrichment
+--              artist name. artist_display strips Discogs disambiguation suffixes
+--              (e.g. "Ayo (2)" → "Ayo") for clean presentation.
+--              Single-source model — Discogs API enrichment
 --              (title, label, format, release country) can be added here
 --              when a stg_api__discogs staging model is available.
 -- Dependencies: stg_csv__musicbuddy, artist_countries
@@ -28,6 +30,7 @@ enriched AS (
         mb.album_id,
         mb.title,
         mb.artist,
+        REGEXP_REPLACE(mb.artist, r' \(\d+\)$', '') AS artist_display,
         mb.genres,
         mb.release_year,
         mb.discogs_release_id,
