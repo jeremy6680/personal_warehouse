@@ -1,5 +1,5 @@
 -- ============================================================
--- Model: int_books__collection_with_history
+-- Model: int_books__unified
 -- Layer: Intermediate
 -- Description: Full union of BookBuddy and Goodreads, deduplicated.
 --              Matching is attempted first on ISBN, then on normalized
@@ -9,7 +9,8 @@
 --                - goodreads_only: in Goodreads but not found in BookBuddy
 --              The book_id is always derived from title + author so it is
 --              consistent regardless of which source(s) a book comes from.
--- Dependencies: stg_csv__bookbuddy, stg_csv__goodreads
+--              country is joined from the author_countries seed on normalized author.
+-- Dependencies: stg_csv__bookbuddy, stg_csv__goodreads, author_countries
 -- Adapter note: Works on BigQuery, DuckDB, and PostgreSQL.
 --               No QUALIFY — dedup handled via NOT IN subqueries.
 -- ============================================================
@@ -22,6 +23,13 @@ bookbuddy AS (
 
 goodreads AS (
     SELECT * FROM {{ ref('stg_csv__goodreads') }}
+),
+
+author_countries AS (
+    SELECT
+        lower(trim(author)) AS author_key,
+        country
+    FROM {{ ref('author_countries') }}
 ),
 
 bookbuddy_keyed AS (
@@ -92,10 +100,12 @@ matched AS (
         gr.year_published,
         gr.publisher,
         gr.rating         AS goodreads_rating,
-        m.match_type
+        m.match_type,
+        ac.country
     FROM all_matches        m
     INNER JOIN bookbuddy_keyed bb ON m.bb_book_id = bb.book_id
     INNER JOIN goodreads_keyed gr ON m.gr_book_id = gr.book_id
+    LEFT JOIN author_countries ac  ON bb.author_key = ac.author_key
 ),
 
 -- Case 2: book in BookBuddy only
@@ -114,8 +124,10 @@ bookbuddy_only AS (
         CAST(NULL AS INT64)   AS year_published,
         CAST(NULL AS STRING)  AS publisher,
         CAST(NULL AS INT64)   AS goodreads_rating,
-        CAST(NULL AS STRING)  AS match_type
+        CAST(NULL AS STRING)  AS match_type,
+        ac.country
     FROM bookbuddy_keyed bb
+    LEFT JOIN author_countries ac ON bb.author_key = ac.author_key
     WHERE bb.book_id NOT IN (SELECT bb_book_id FROM all_matches)
 ),
 
@@ -135,8 +147,10 @@ goodreads_only AS (
         gr.year_published,
         gr.publisher,
         gr.rating             AS goodreads_rating,
-        CAST(NULL AS STRING)  AS match_type
+        CAST(NULL AS STRING)  AS match_type,
+        ac.country
     FROM goodreads_keyed gr
+    LEFT JOIN author_countries ac ON gr.author_key = ac.author_key
     WHERE gr.book_id NOT IN (SELECT gr_book_id FROM all_matches)
 ),
 

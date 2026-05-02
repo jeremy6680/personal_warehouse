@@ -1,0 +1,60 @@
+version: 2
+
+seeds:
+  - name: author_countries
+    description: >
+      Manual mapping of author names to their country of origin or nationality.
+      Used to enrich int_books__unified with a country dimension.
+      Values must match the author field in BookBuddy and Goodreads sources exactly
+      (case-insensitive — the join normalizes both sides with lower/trim).
+    config:
+      tags: ["seeds", "books", "reference"]
+    columns:
+      - name: author
+        description: Author name as it appears in BookBuddy or Goodreads.
+        tests:
+          - unique
+          - not_null
+      - name: country
+        description: Country of origin or nationality of the author (e.g., France, United States).
+        tests:
+          - not_null
+
+  - name: director_countries
+    description: >
+      Manual mapping of director names to their country of origin or nationality.
+      Used to enrich int_movies__unified with a country dimension.
+      Only the primary director (first entry in the comma-separated directors field
+      from MovieBuddy) is used for the join. Values must match the primary director
+      name exactly (case-insensitive — the join normalizes both sides with lower/trim).
+    config:
+      tags: ["seeds", "films", "reference"]
+    columns:
+      - name: director
+        description: Director name as it appears first in the MovieBuddy directors field.
+        tests:
+          - unique
+          - not_null
+      - name: country
+        description: Country of origin or nationality of the director (e.g., United Kingdom, Japan).
+        tests:
+          - not_null
+
+  - name: artist_countries
+    description: >
+      Manual mapping of artist names to their country of origin or nationality.
+      Used to enrich int_music__collection with a country dimension.
+      Values must match the artist field in MusicBuddy exactly
+      (case-insensitive — the join normalizes both sides with lower/trim).
+    config:
+      tags: ["seeds", "music", "reference"]
+    columns:
+      - name: artist
+        description: Artist name as it appears in MusicBuddy.
+        tests:
+          - unique
+          - not_null
+      - name: country
+        description: Country of origin or nationality of the artist (e.g., United States, Sweden).
+        tests:
+          - not_null

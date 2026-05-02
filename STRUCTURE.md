@@ -53,13 +53,13 @@ personal_warehouse/               ← dbt project root (git repo)
 
 These folders look similar but serve opposite purposes:
 
-| | `data/` | `seeds/` |
-|---|---|---|
-| Who loads it? | External (bq load, scripts) | dbt (`dbt seed`) |
-| Source of truth | BigQuery / Postgres | dbt repo |
-| Size | Can be large | Small only |
-| Changes | From upstream app exports | Manually edited |
-| Referenced via | `source()` | `ref()` |
+|                 | `data/`                     | `seeds/`         |
+| --------------- | --------------------------- | ---------------- |
+| Who loads it?   | External (bq load, scripts) | dbt (`dbt seed`) |
+| Source of truth | BigQuery / Postgres         | dbt repo         |
+| Size            | Can be large                | Small only       |
+| Changes         | From upstream app exports   | Manually edited  |
+| Referenced via  | `source()`                  | `ref()`          |
 
 All five media-tracking CSVs belong in `data/` because they come from external apps and could be replaced by an API integration in the future.
 
@@ -74,6 +74,7 @@ The `_csv__sources.yml` file declares the BigQuery tables in `raw_personal` that
 ## Naming conventions
 
 ### SQL files
+
 - Staging: `stg_<source>__<entity>.sql`
 - Intermediate: `int_<domain>__<description>.sql`
 - Mart: `mrt_<domain>__<entity>.sql`
@@ -81,10 +82,12 @@ The `_csv__sources.yml` file declares the BigQuery tables in `raw_personal` that
 Double underscore `__` separates source/domain from entity.
 
 ### YAML files
+
 - Sources: `_<source>__sources.yml`
 - Model docs: `_<layer>__models.yml` (or grouped by domain)
 
 ### Columns
+
 - `snake_case` everywhere
 - Primary keys: `<entity>_id`
 - Booleans: `is_`, `has_`, `did_` prefix
@@ -95,10 +98,10 @@ Double underscore `__` separates source/domain from entity.
 
 ## Materialisation defaults (from `dbt_project.yml`)
 
-| Layer | Default |
-|---|---|
-| `staging` | `view` |
-| `intermediate` | `ephemeral` |
-| `mart` | `table` |
+| Layer          | Default |
+| -------------- | ------- |
+| `staging`      | `view`  |
+| `intermediate` | `view`  |
+| `mart`         | `table` |
 
 Mart models are always `table` — they are the consumer-facing layer used by dashboards.

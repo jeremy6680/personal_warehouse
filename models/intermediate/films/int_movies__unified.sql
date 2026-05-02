@@ -10,11 +10,15 @@
 --              for the same film (rewatches) are collapsed to one row; the most
 --              recent entry wins for rating and URI, counts and date bounds span
 --              all entries. Matching is on normalized title + release_year.
+--              country is joined from the director_countries seed on the primary
+--              director (first name in the comma-separated directors field).
+--              Letterboxd-only rows have no director data — country is null.
 --              Note: Letterboxd exports do not include TMDB IDs. TMDB-based
 --              matching can be added if the export format is extended.
--- Dependencies: stg_csv__moviebuddy, stg_csv__letterboxd
--- Adapter note: QUALIFY used — supported on BigQuery and DuckDB.
---               For PostgreSQL replace with a ROW_NUMBER() subquery.
+-- Dependencies: stg_csv__moviebuddy, stg_csv__letterboxd, director_countries
+-- Adapter note: QUALIFY and SPLIT used — supported on BigQuery and DuckDB.
+--               For PostgreSQL replace QUALIFY with ROW_NUMBER() subquery
+--               and SPLIT(...)[SAFE_OFFSET(0)] with split_part(..., ',', 1).
 -- ============================================================
 
 WITH
@@ -27,10 +31,20 @@ letterboxd AS (
     SELECT * FROM {{ ref('stg_csv__letterboxd') }}
 ),
 
+director_countries AS (
+    SELECT
+        lower(trim(director)) AS director_key,
+        country
+    FROM {{ ref('director_countries') }}
+),
+
 moviebuddy_keyed AS (
     SELECT
         *,
-        lower(trim(title)) AS title_key
+        lower(trim(title))                                             AS title_key,
+        -- Primary director: first entry in comma-separated list
+        -- Adapter note: SPLIT/SAFE_OFFSET is BigQuery/DuckDB — use split_part() on PostgreSQL
+        lower(trim(SPLIT(directors, ',')[SAFE_OFFSET(0)]))             AS primary_director_key
     FROM moviebuddy
 ),
 
@@ -91,12 +105,14 @@ matched AS (
         lb.watch_count,
         lb.letterboxd_rating,
         lb.letterboxd_uri,
-        'title_year'          AS match_type
+        'title_year'          AS match_type,
+        dc.country
     FROM title_year_matches      m
     INNER JOIN moviebuddy_keyed  mb ON m.mb_movie_id      = mb.movie_id
     INNER JOIN letterboxd_aggregated lb
         ON  m.lb_title_key    = lb.title_key
         AND m.lb_release_year = lb.release_year
+    LEFT JOIN director_countries dc ON mb.primary_director_key = dc.director_key
 ),
 
 -- Case 2: film in MovieBuddy only (in collection but never logged on Letterboxd)
@@ -116,9 +132,11 @@ moviebuddy_only AS (
         CAST(NULL AS INT64)   AS watch_count,
         CAST(NULL AS FLOAT64) AS letterboxd_rating,
         CAST(NULL AS STRING)  AS letterboxd_uri,
-        CAST(NULL AS STRING)  AS match_type
+        CAST(NULL AS STRING)  AS match_type,
+        dc.country
     FROM moviebuddy_keyed mb
-    LEFT JOIN title_year_matches m ON mb.movie_id = m.mb_movie_id
+    LEFT JOIN title_year_matches m  ON mb.movie_id             = m.mb_movie_id
+    LEFT JOIN director_countries dc ON mb.primary_director_key = dc.director_key
     WHERE m.mb_movie_id IS NULL
 ),
 
@@ -139,7 +157,8 @@ letterboxd_only AS (
         lb.watch_count,
         lb.letterboxd_rating,
         lb.letterboxd_uri,
-        CAST(NULL AS STRING)  AS match_type
+        CAST(NULL AS STRING)  AS match_type,
+        CAST(NULL AS STRING)  AS country
     FROM letterboxd_aggregated lb
     LEFT JOIN title_year_matches m
         ON  lb.title_key    = m.lb_title_key
