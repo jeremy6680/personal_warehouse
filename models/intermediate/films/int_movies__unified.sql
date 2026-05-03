@@ -1,5 +1,5 @@
 -- ============================================================
--- Model: int_movies__collection_with_diary
+-- Model: int_movies__unified
 -- Layer: Intermediate
 -- Description: Full union of MovieBuddy and Letterboxd, deduplicated to one
 --              row per film. Three output cases:
@@ -10,12 +10,15 @@
 --              for the same film (rewatches) are collapsed to one row; the most
 --              recent entry wins for rating and URI, counts and date bounds span
 --              all entries. Matching is on normalized title + release_year.
---              country is joined from the director_countries seed on the primary
---              director (first name in the comma-separated directors field).
---              Letterboxd-only rows have no director data — country is null.
+--              country uses a two-tier lookup:
+--                1. director_countries seed on primary director (matched /
+--                   moviebuddy_only rows, where director data is available)
+--                2. film_countries seed on (title, release_year) for
+--                   letterboxd_only rows, which carry no director data
 --              Note: Letterboxd exports do not include TMDB IDs. TMDB-based
 --              matching can be added if the export format is extended.
--- Dependencies: stg_csv__moviebuddy, stg_csv__letterboxd, director_countries
+-- Dependencies: stg_csv__moviebuddy, stg_csv__letterboxd,
+--               director_countries, film_countries
 -- Adapter note: QUALIFY and SPLIT used — supported on BigQuery and DuckDB.
 --               For PostgreSQL replace QUALIFY with ROW_NUMBER() subquery
 --               and SPLIT(...)[SAFE_OFFSET(0)] with split_part(..., ',', 1).
@@ -36,6 +39,14 @@ director_countries AS (
         lower(trim(director)) AS director_key,
         country
     FROM {{ ref('director_countries') }}
+),
+
+film_countries AS (
+    SELECT
+        lower(trim(title))          AS title_key,
+        CAST(release_year AS INT64) AS release_year,
+        country
+    FROM {{ ref('film_countries') }}
 ),
 
 moviebuddy_keyed AS (
@@ -140,30 +151,49 @@ moviebuddy_only AS (
     WHERE m.mb_movie_id IS NULL
 ),
 
--- Case 3: film in Letterboxd only (logged/loved but not in MovieBuddy collection)
-letterboxd_only AS (
+-- Case 3a: isolate Letterboxd-only rows and compute surrogate key before joining
+-- film_countries — avoids release_year ambiguity in generate_surrogate_key.
+letterboxd_only_base AS (
     SELECT
         {{ dbt_utils.generate_surrogate_key(['film_name', 'release_year']) }} AS movie_id,
-        lb.film_name          AS title,
-        CAST(NULL AS STRING)  AS content_type,
+        lb.film_name,
         lb.release_year,
-        CAST(NULL AS FLOAT64) AS rating,
-        CAST(NULL AS STRING)  AS directors,
-        CAST(NULL AS STRING)  AS genres,
-        CAST(NULL AS INT64)   AS runtime_minutes,
-        CAST(NULL AS INT64)   AS tmdb_id,
+        lb.title_key,
         lb.first_watched_date,
         lb.last_watched_date,
         lb.watch_count,
         lb.letterboxd_rating,
-        lb.letterboxd_uri,
-        CAST(NULL AS STRING)  AS match_type,
-        CAST(NULL AS STRING)  AS country
+        lb.letterboxd_uri
     FROM letterboxd_aggregated lb
     LEFT JOIN title_year_matches m
         ON  lb.title_key    = m.lb_title_key
         AND lb.release_year = m.lb_release_year
     WHERE m.lb_title_key IS NULL
+),
+
+-- Case 3: film in Letterboxd only (logged/loved but not in MovieBuddy collection)
+letterboxd_only AS (
+    SELECT
+        lob.movie_id,
+        lob.film_name         AS title,
+        CAST(NULL AS STRING)  AS content_type,
+        lob.release_year,
+        CAST(NULL AS FLOAT64) AS rating,
+        CAST(NULL AS STRING)  AS directors,
+        CAST(NULL AS STRING)  AS genres,
+        CAST(NULL AS INT64)   AS runtime_minutes,
+        CAST(NULL AS INT64)   AS tmdb_id,
+        lob.first_watched_date,
+        lob.last_watched_date,
+        lob.watch_count,
+        lob.letterboxd_rating,
+        lob.letterboxd_uri,
+        CAST(NULL AS STRING)  AS match_type,
+        fc.country
+    FROM letterboxd_only_base lob
+    LEFT JOIN film_countries fc
+        ON  lob.title_key    = fc.title_key
+        AND lob.release_year = fc.release_year
 ),
 
 combined AS (

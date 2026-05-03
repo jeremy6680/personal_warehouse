@@ -65,9 +65,9 @@ models:
       of the same film are collapsed to one row. Matching is on normalized title
       + release_year. The movie_id is always a title+release_year surrogate so
       it is consistent regardless of which source(s) a film comes from.
-      country is joined from the director_countries seed on the primary director
-      (first name in the comma-separated directors field). Null for Letterboxd-only
-      rows, which carry no director data.
+      country uses a two-tier lookup: director_countries seed on the primary director
+      for matched and moviebuddy_only rows; film_countries seed on (title, release_year)
+      for letterboxd_only rows, which carry no director data.
     config:
       tags: ["intermediate", "movies"]
     columns:
@@ -113,9 +113,10 @@ models:
           null — film found in only one source (no cross-source match).
       - name: country
         description: >
-          Country of origin or nationality of the primary director, joined from the
-          director_countries seed. Null for Letterboxd-only rows (no director data)
-          or if the director has no entry in the seed.
+          Country of origin for the film. For matched and moviebuddy_only rows: joined
+          from director_countries on the primary director. For letterboxd_only rows:
+          joined from film_countries on (title, release_year). Null if no matching
+          entry exists in either seed.
 
   - name: int_music__collection
     description: >

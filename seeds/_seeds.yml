@@ -60,3 +60,37 @@ seeds:
         description: Country of origin or nationality of the artist (e.g., United States, Sweden).
         tests:
           - not_null
+
+  - name: film_countries
+    description: >
+      Manual mapping of (title, release_year) to country of origin for Letterboxd-only
+      films that carry no director data. Used as a fallback country source in
+      int_movies__unified for the letterboxd_only case, where director_countries cannot
+      be applied. Country follows the same convention as director_countries: primary
+      production country or director nationality, whichever is most representative.
+      The join key is lower(trim(title)) + release_year, so titles must match the
+      Letterboxd film_name exactly (case-insensitive). Uniqueness is enforced on
+      the (title, release_year) combination — same-named films from different years
+      are valid distinct rows (e.g. Mother 2009 vs MOTHER 2020).
+    config:
+      tags: ["seeds", "films", "reference"]
+      column_types:
+        release_year: INT64
+    columns:
+      - name: title
+        description: Film title as it appears in the Letterboxd export (case-insensitive join key).
+        tests:
+          - not_null
+      - name: release_year
+        description: Release year of the film. Combined with title to form the unique join key.
+        tests:
+          - not_null
+      - name: country
+        description: Primary production country or director nationality (e.g., France, Japan, United States).
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - title
+            - release_year
