@@ -35,14 +35,25 @@ personal_warehouse/               ← dbt project root (git repo)
 │   │   └── music/
 │   │       └── int_music__collection.sql       ← MusicBuddy enriched with country
 │   │
-│   └── mart/                     ← (not yet built)
+│   └── mart/
+│       ├── _mart__models.yml             ← Mart model docs and tests (all domains)
+│       ├── books/
+│       │   └── mrt_books__collection.sql         ← Full book collection (read + unread)
+│       ├── films/
+│       │   └── mrt_movies__collection.sql        ← Full movie/TV collection (watched + wishlist)
+│       ├── music/
+│       │   └── mrt_music__collection.sql         ← Full album collection with country
+│       └── cross_domain/
+│           ├── mrt_media__summary.sql            ← Cross-domain counts, avg ratings, monthly pace
+│           └── mrt_media__country_index.sql      ← One row per (country, domain, item)
 │
 ├── seeds/                        ← Static reference CSVs managed by dbt seed
 │   ├── _seeds.yml                ← Seed documentation and tests (all domains)
 │   ├── books/
 │   │   └── author_countries.csv  ← Author → country mapping
 │   ├── films/
-│   │   └── director_countries.csv ← Director → country mapping
+│   │   ├── director_countries.csv ← Director → country mapping
+│   │   └── film_countries.csv    ← (title, release_year) → country fallback for Letterboxd-only rows
 │   └── music/
 │       └── artist_countries.csv  ← Artist → country mapping
 │
@@ -129,10 +140,10 @@ Staging models generate surrogate keys via `dbt_utils.generate_surrogate_key([..
 
 | Model | Key column | Source columns |
 |---|---|---|
-| `stg_csv__bookbuddy` | `book_id` | `['title', 'author']` |
+| `stg_csv__bookbuddy` | `book_id` | `['title', 'author', 'isbn']` |
 | `stg_csv__letterboxd` | `movie_id` | `['watched_date', 'film_name']` |
 | `stg_csv__moviebuddy` | `movie_id` | `['title', 'release_year']` |
-| `stg_csv__musicbuddy` | `album_id` | `['title', 'artist']` |
+| `stg_csv__musicbuddy` | `album_id` | `['title', 'artist', 'discogs_release_id']` |
 | `stg_csv__goodreads` | `book_id` | Raw Goodreads string ID (stable source ID) |
 
 ---

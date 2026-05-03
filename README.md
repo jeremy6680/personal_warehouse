@@ -11,7 +11,8 @@ Media-tracking apps (Goodreads, Letterboxd, BookBuddy, MovieBuddy, MusicBuddy) e
 1. Loads raw CSV exports into BigQuery (`raw_personal` dataset)
 2. Cleans and standardises the data in the **staging layer**
 3. Joins and enriches across sources in the **intermediate layer**
-4. Produces dashboard-ready models in the **mart layer** *(in progress)*
+4. Produces dashboard-ready models in the **mart layer**
+5. Exposes the results in **[Metabase](https://culture.jeremymarchandeau.com/public/dashboard/8b911c69-24e7-4e62-ad6d-a5391b43062d)** — self-hosted on Hetzner via Coolify
 
 The end goal is a unified, queryable history of books read, movies watched, and music collected — with ratings, dates, and cross-domain analytics.
 
@@ -39,6 +40,7 @@ Raw CSV exports live in `data/` and are loaded into BigQuery manually via `bq lo
 | Warehouse | BigQuery (`personal-warehouse-495013`) |
 | Local query engine | DuckDB (for dev/portfolio) |
 | Raw data | CSV exports loaded via `bq load` |
+| Visualisation | Metabase (self-hosted on Hetzner via Coolify) |
 | Version control | Git |
 
 ---
@@ -96,9 +98,8 @@ See [NEXT_STEPS.md](NEXT_STEPS.md) for current priorities.
 | Intermediate | `int_books__unified` | Done |
 | Intermediate | `int_movies__unified` | Done |
 | Intermediate | `int_music__collection` | Done |
-| Mart | `mrt_books__reading_history` | Not started |
-| Mart | `mrt_books__collection` | Not started |
-| Mart | `mrt_movies__watching_history` | Not started |
-| Mart | `mrt_movies__collection` | Not started |
-| Mart | `mrt_music__collection` | Not started |
-| Mart | `mrt_media__summary` | Not started |
+| Mart | `mrt_books__collection` | Done |
+| Mart | `mrt_movies__collection` | Done |
+| Mart | `mrt_music__collection` | Done |
+| Mart | `mrt_media__summary` | Done |
+| Mart | `mrt_media__country_index` | Done |

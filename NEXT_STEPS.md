@@ -59,7 +59,7 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 ## Future / nice to have
 
 - [x] `seeds/films/film_countries.csv` — (title, release_year, country) mapping for Letterboxd-only films that have no director in `director_countries`; same pattern as existing seeds
-- [ ] Looker Studio or Metabase dashboard connected to mart tables
+- [x] Looker Studio or Metabase dashboard connected to mart tables — Metabase self-hosted on Hetzner via Coolify at https://culture.jeremymarchandeau.com
 - [ ] Schedule CSV refresh + `dbt build` (cron or Cloud Scheduler)
 - [ ] Explore Spotify API via Airbyte to replace/supplement MusicBuddy CSV
 - [ ] TMDB-based movie matching once Letterboxd exports include TMDB IDs

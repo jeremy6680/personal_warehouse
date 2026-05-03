@@ -156,10 +156,10 @@ Decisions are logged here when a non-obvious choice is made. Each entry records 
 - Stable: the same title+author always produces the same `book_id`, enabling cross-source joins in intermediate without needing to carry raw source IDs
 
 **Keys by model:**
-- `stg_csv__bookbuddy`: `book_id` = `generate_surrogate_key(['title', 'author'])`
+- `stg_csv__bookbuddy`: `book_id` = `generate_surrogate_key(['title', 'author', 'isbn'])` — `isbn` added to distinguish different editions of the same book
 - `stg_csv__letterboxd`: `movie_id` = `generate_surrogate_key(['watched_date', 'film_name'])`
 - `stg_csv__moviebuddy`: `movie_id` = `generate_surrogate_key(['title', 'release_year'])`
-- `stg_csv__musicbuddy`: `album_id` = `generate_surrogate_key(['title', 'artist'])`
+- `stg_csv__musicbuddy`: `album_id` = `generate_surrogate_key(['title', 'artist', 'discogs_release_id'])` — `discogs_release_id` added to distinguish different releases of the same album
 - `stg_csv__goodreads`: `book_id` = raw Goodreads string ID (source already provides a stable ID)
 
 ---

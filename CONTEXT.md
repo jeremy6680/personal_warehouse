@@ -57,16 +57,15 @@ It also serves as a **portfolio project** demonstrating dbt analytics engineerin
 - `int_movies__unified` — merges MovieBuddy collection with Letterboxd diary; Letterboxd rewatches aggregated to one row per film; three-case union; title+year matching; country enrichment via `director_countries` seed
 - `int_music__collection` — MusicBuddy enriched with country of origin via `artist_countries` seed; artist display name with Discogs suffix stripped
 
-### Phase 3 — Mart (current focus)
-- `mrt_books__reading_history` — books finished, with rating, genre, dates (from `int_books__unified`)
-- `mrt_books__collection` — full book collection (read + unread) with metadata
-- `mrt_movies__watching_history` — movies watched with rating, director, genre, watch date
-- `mrt_movies__collection` — full movie/TV collection (watched + wishlist)
-- `mrt_music__collection` — full album collection with genre, style, artist, country
-- `mrt_media__summary` — cross-domain aggregate: counts, avg ratings, monthly pace per domain
+### Phase 3 — Mart ✅ Complete
+- `mrt_books__collection` — full book collection (read + unread) with metadata, country, ratings from both sources
+- `mrt_movies__collection` — full movie/TV collection (watched + wishlist) with metadata
+- `mrt_music__collection` — full album collection with genre, artist_display, country
+- `mrt_media__summary` — cross-domain aggregate: item counts, avg ratings, monthly pace per domain
+- `mrt_media__country_index` — cross-domain country spine: one row per (country, domain, item) across books, movies, and music
 
 ### Long-term
-- Visualise in a BI tool (Looker Studio or Metabase) connected to BigQuery mart tables
+- ✅ Visualise in Metabase — self-hosted on Hetzner via Coolify at https://culture.jeremymarchandeau.com
 - Schedule automatic CSV refreshes and incremental loads
 
 ---
@@ -79,6 +78,7 @@ Three reference CSVs live in `seeds/` and are managed by dbt (`dbt seed`):
 |---|---|---|
 | `author_countries` | `seeds/books/author_countries.csv` | `int_books__unified` |
 | `director_countries` | `seeds/films/director_countries.csv` | `int_movies__unified` |
+| `film_countries` | `seeds/films/film_countries.csv` | `int_movies__unified` (fallback for Letterboxd-only rows) |
 | `artist_countries` | `seeds/music/artist_countries.csv` | `int_music__collection` |
 
 These are manually maintained reference tables mapping names to countries of origin. Join is always case-insensitive (`lower/trim` on both sides).
