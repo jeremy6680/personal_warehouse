@@ -1,10 +1,14 @@
 -- ============================================================
 -- Model: mrt_music__collection
 -- Layer: Mart
--- Description: Full album collection from MusicBuddy, enriched with country.
---              artist is the display name (Discogs disambiguation suffix stripped).
---              rating is null for unrated albums (MusicBuddy uses 0 for unrated).
--- Dependencies: int_music__collection
+-- Description: Full album collection from MusicBuddy and Spotify, enriched
+--              with country. One row per album across both sources.
+--              artist_display is used for MusicBuddy rows (Discogs suffix stripped);
+--              Spotify-only rows use the raw artists string.
+--              rating is null for unrated albums (MusicBuddy uses 0 for unrated;
+--              Spotify carries no personal rating).
+--              source_name: 'musicbuddy' | 'spotify' | 'both'
+-- Dependencies: int_music__unified
 -- Adapter note: Standard SQL — works on BigQuery, DuckDB, and PostgreSQL.
 -- ============================================================
 
@@ -16,27 +20,30 @@
 WITH
 
 source_data AS (
-    SELECT * FROM {{ ref('int_music__collection') }}
+    SELECT * FROM {{ ref('int_music__unified') }}
 ),
 
 collection AS (
     SELECT
         album_id,
         title,
-        artist_display                                              AS artist,
+        artist_display                  AS artist,
         genres,
         release_year,
         discogs_release_id,
-        NULLIF(rating, 0)                                           AS rating,
+        spotify_album_id,
+        total_tracks,
+        spotify_added_at,
+        NULLIF(rating, 0)               AS rating,
         country,
-        'musicbuddy'                                                AS source
+        source_name
     FROM source_data
 ),
 
 with_flags AS (
     SELECT
         *,
-        rating IS NOT NULL                                          AS is_rated
+        rating IS NOT NULL              AS is_rated
     FROM collection
 )
 
