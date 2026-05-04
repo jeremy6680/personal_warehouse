@@ -77,11 +77,12 @@ into BigQuery `raw_personal`.
 - [x] `raw_personal.spotify_saved_tracks` — 254 rows (audio features NULL — endpoint deprecated Nov 2024)
 - [x] `raw_personal.spotify_followed_artists` — 67 rows
 
-### Airflow DAG
+### Scheduling
 
-- [ ] Create `dags/spotify_ingest.py` — daily DAG that runs `spotify_to_bq.py` then
-      triggers `dbt build --select tag:spotify`
-- [ ] Tag relevant dbt models with `+tag: spotify` in `dbt_project.yml`
+- [x] `dags/spotify_ingest.py` — Airflow DAG written (kept as portfolio artefact); not used
+      in practice due to persistent macOS SIGSEGV — see ADR-015
+- [ ] `scripts/spotify_launchd.plist` — macOS launchd job: daily at 09:30 Europe/Paris,
+      runs `spotify_to_bq.py` then `dbt build --select tag:spotify+`
 
 ### dbt staging models ✅
 

@@ -321,3 +321,32 @@ in this project is `__unified` (see `int_books__unified`, `int_movies__unified`)
 
 **Trade-offs:** `int_music__collection` is now an orphan model (no downstream `ref()`). It still
 compiles correctly but is no longer used — can be deleted manually from BigQuery and the repo.
+
+---
+
+## ADR-015 — Scheduling via macOS launchd instead of Airflow
+
+**Date:** 2025
+**Status:** Active
+
+**Context:** The Spotify ingestion script needs to run daily at 09:30 Europe/Paris. Airflow was
+the planned orchestrator (documented in CLAUDE.md stack). A DAG was written (`dags/spotify_ingest.py`)
+and Airflow was installed locally, but persistent SIGSEGV errors on macOS prevented tasks from executing.
+The issue is a well-known macOS limitation: Airflow's process forking is unsafe with certain native
+libraries, and the environment (pyenv + conda + venv) amplified the instability.
+
+**Decision:** Use macOS `launchd` as the scheduler for local execution. The Airflow DAG is kept in
+`dags/` as a portfolio artefact and future reference. Airflow remains the intended orchestrator if
+the pipeline is ever moved to a Linux environment (e.g., Hetzner VM).
+
+**Rationale:**
+
+- Airflow native on macOS causes persistent SIGSEGV errors that survive standard workarounds
+  (`no_proxy=*`, `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES`, `execute_tasks_new_python_interpreter=True`)
+- `launchd` is the native macOS job scheduler — zero overhead, no background services, no dependencies
+- The scheduling requirement is simple (one script, once a day) — Airflow is overkill for local use
+- Airflow is still the right tool for a Linux/production environment; the DAG remains valid and
+  can be deployed without modification when the time comes
+
+**Trade-offs:** `launchd` has no UI, no task history, no retry logic. For a personal daily script
+running in ~30s this is acceptable. Logs are written to a file for manual inspection.
