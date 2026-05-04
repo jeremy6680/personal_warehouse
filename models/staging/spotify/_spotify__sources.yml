@@ -1,0 +1,237 @@
+version: 2
+
+sources:
+  - name: spotify
+    description: >
+      Spotify library data fetched via the Spotify Web API using Spotipy.
+      Written to BigQuery raw_personal by scripts/spotify_to_bq.py (full refresh on each run).
+    database: personal-warehouse-495013
+    schema: raw_personal
+    tables:
+      - name: spotify_saved_albums
+        description: Albums saved to the user's Spotify library.
+        columns:
+          - name: album_id
+            description: Spotify album identifier. Stable native ID — used as primary key.
+          - name: name
+            description: Album title.
+          - name: artists
+            description: Comma-separated artist names.
+          - name: artist_ids
+            description: JSON array of Spotify artist IDs — use to join with followed_artists.
+          - name: release_date
+            description: >
+              Release date as returned by Spotify. Precision varies by album:
+              full date (2023-06-15), month (2023-06), or year only (2023).
+              See release_date_precision for the applicable format.
+          - name: release_date_precision
+            description: Precision of release_date — one of 'day', 'month', 'year'.
+          - name: genres
+            description: >
+              JSON array of genres. Almost always empty ([]) — Spotify stores genres
+              on Artist objects, not Album objects. Use stg_spotify__followed_artists
+              for reliable genre data.
+          - name: total_tracks
+            description: Total number of tracks on the album.
+          - name: added_at
+            description: Timestamp when the album was saved to the user's library.
+          - name: _extracted_at
+            description: Timestamp when this row was written to BigQuery by the ingestion script.
+
+      - name: spotify_saved_tracks
+        description: Individual tracks saved to the user's Spotify library.
+        columns:
+          - name: track_id
+            description: Spotify track identifier. Stable native ID — used as primary key.
+          - name: name
+            description: Track title.
+          - name: artists
+            description: Comma-separated artist names.
+          - name: artist_ids
+            description: JSON array of Spotify artist IDs.
+          - name: album_id
+            description: Spotify album identifier — joins to spotify_saved_albums.
+          - name: album_name
+            description: Album title the track belongs to.
+          - name: duration_ms
+            description: Track duration in milliseconds.
+          - name: explicit
+            description: Whether the track has explicit content.
+          - name: popularity
+            description: Spotify popularity score (0–100). Higher means more popular.
+          - name: added_at
+            description: Timestamp when the track was saved to the user's library.
+          - name: danceability
+            description: >
+              Danceability score (0.0–1.0). NULL — Spotify deprecated the
+              /audio-features endpoint for new applications in November 2024.
+          - name: energy
+            description: Energy score (0.0–1.0). NULL — see danceability note.
+          - name: valence
+            description: Musical positiveness score (0.0–1.0). NULL — see danceability note.
+          - name: tempo
+            description: Estimated tempo in BPM. NULL — see danceability note.
+          - name: acousticness
+            description: Acousticness score (0.0–1.0). NULL — see danceability note.
+          - name: instrumentalness
+            description: Instrumentalness score (0.0–1.0). NULL — see danceability note.
+          - name: liveness
+            description: Liveness score (0.0–1.0). NULL — see danceability note.
+          - name: speechiness
+            description: Speechiness score (0.0–1.0). NULL — see danceability note.
+          - name: _extracted_at
+            description: Timestamp when this row was written to BigQuery by the ingestion script.
+
+      - name: spotify_followed_artists
+        description: Artists followed by the user on Spotify.
+        columns:
+          - name: artist_id
+            description: Spotify artist identifier. Stable native ID — used as primary key.
+          - name: name
+            description: Artist name.
+          - name: genres
+            description: >
+              JSON array of genres associated with the artist. Reliable on Artist
+              objects — use this to enrich saved albums with genre data via artist_ids.
+          - name: popularity
+            description: Spotify popularity score (0–100).
+          - name: followers
+            description: Total number of Spotify followers.
+          - name: _extracted_at
+            description: Timestamp when this row was written to BigQuery by the ingestion script.
+
+models:
+  - name: stg_spotify__saved_albums
+    description: >
+      Spotify saved albums, cleaned and typed.
+      album_id is Spotify's native stable ID — no surrogate key needed.
+      Note: genres is almost always an empty JSON array — genres are stored on
+      Artist objects in the Spotify API. Use stg_spotify__followed_artists for
+      reliable genre data, joining via artist_ids.
+    config:
+      materialized: view
+      tags: ["staging", "music", "spotify"]
+    columns:
+      - name: album_id
+        description: Spotify album identifier. Primary key.
+        tests:
+          - unique
+          - not_null
+      - name: album_name
+        description: Album title.
+        tests:
+          - not_null
+      - name: artists
+        description: Comma-separated artist names.
+        tests:
+          - not_null
+      - name: artist_ids
+        description: JSON array of Spotify artist IDs.
+      - name: release_date
+        description: >
+          Release date string. Format varies by precision — see release_date_precision.
+      - name: release_date_precision
+        description: Precision of release_date — 'day', 'month', or 'year'.
+      - name: genres
+        description: JSON array of genres. Almost always empty — see source note.
+      - name: total_tracks
+        description: Total number of tracks on the album.
+      - name: added_at
+        description: Timestamp when the album was saved to the library.
+        tests:
+          - not_null
+      - name: _extracted_at
+        description: Timestamp when this row was written to BigQuery by the ingestion script.
+        tests:
+          - not_null
+
+  - name: stg_spotify__saved_tracks
+    description: >
+      Spotify saved tracks, cleaned and typed.
+      track_id is Spotify's native stable ID — no surrogate key needed.
+      Audio feature columns (danceability, energy, valence, tempo, etc.) are all NULL
+      because Spotify deprecated the /audio-features endpoint for new applications
+      in November 2024. Columns are retained for forward compatibility.
+    config:
+      materialized: view
+      tags: ["staging", "music", "spotify"]
+    columns:
+      - name: track_id
+        description: Spotify track identifier. Primary key.
+        tests:
+          - unique
+          - not_null
+      - name: track_name
+        description: Track title.
+        tests:
+          - not_null
+      - name: artists
+        description: Comma-separated artist names.
+        tests:
+          - not_null
+      - name: artist_ids
+        description: JSON array of Spotify artist IDs.
+      - name: album_id
+        description: Spotify album identifier — joins to stg_spotify__saved_albums.
+      - name: album_name
+        description: Album title the track belongs to.
+      - name: duration_ms
+        description: Track duration in milliseconds.
+      - name: explicit
+        description: Whether the track has explicit content.
+      - name: popularity
+        description: Spotify popularity score (0–100).
+      - name: added_at
+        description: Timestamp when the track was saved to the library.
+        tests:
+          - not_null
+      - name: danceability
+        description: Danceability score (0.0–1.0). Currently NULL — endpoint deprecated.
+      - name: energy
+        description: Energy score (0.0–1.0). Currently NULL — endpoint deprecated.
+      - name: valence
+        description: Musical positiveness score (0.0–1.0). Currently NULL — endpoint deprecated.
+      - name: tempo
+        description: Estimated tempo in BPM. Currently NULL — endpoint deprecated.
+      - name: acousticness
+        description: Acousticness score (0.0–1.0). Currently NULL — endpoint deprecated.
+      - name: instrumentalness
+        description: Instrumentalness score (0.0–1.0). Currently NULL — endpoint deprecated.
+      - name: liveness
+        description: Liveness score (0.0–1.0). Currently NULL — endpoint deprecated.
+      - name: speechiness
+        description: Speechiness score (0.0–1.0). Currently NULL — endpoint deprecated.
+      - name: _extracted_at
+        description: Timestamp when this row was written to BigQuery by the ingestion script.
+        tests:
+          - not_null
+
+  - name: stg_spotify__followed_artists
+    description: >
+      Spotify followed artists, cleaned and typed.
+      artist_id is Spotify's native stable ID — no surrogate key needed.
+      genres is a JSON array and is reliable on Artist objects — use this to enrich
+      saved albums with genre data by joining on artist_ids.
+    config:
+      materialized: view
+      tags: ["staging", "music", "spotify"]
+    columns:
+      - name: artist_id
+        description: Spotify artist identifier. Primary key.
+        tests:
+          - unique
+          - not_null
+      - name: artist_name
+        description: Artist name.
+        tests:
+          - not_null
+      - name: genres
+        description: JSON array of genres associated with the artist.
+      - name: popularity
+        description: Spotify popularity score (0–100).
+      - name: followers
+        description: Total number of Spotify followers.
+      - name: _extracted_at
+        description: Timestamp when this row was written to BigQuery by the ingestion script.
+        tests:
+          - not_null
