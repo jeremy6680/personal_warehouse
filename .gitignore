@@ -11,5 +11,6 @@ logs/
 
 # secrets
 .env
+.spotify_cache
 
 data/
