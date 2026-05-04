@@ -139,15 +139,19 @@ models:
 
   - name: mrt_music__collection
     description: >
-      Full album collection from MusicBuddy, enriched with country. artist is the
-      display name with Discogs disambiguation suffix stripped (e.g. "Creed" not
-      "Creed (3)"). rating is null for unrated albums.
+      Full album collection from MusicBuddy and Spotify, enriched with country.
+      One row per album across both sources. artist is the display name with Discogs
+      disambiguation suffix stripped for MusicBuddy rows; raw artists string for
+      Spotify-only rows. rating is null for unrated albums (MusicBuddy stores 0 for
+      unrated; Spotify carries no personal rating).
     config:
       materialized: table
       tags: ["mart", "music"]
     columns:
       - name: album_id
-        description: Surrogate key derived from title + artist (raw, with disambiguation suffix).
+        description: >
+          Surrogate key. For MusicBuddy rows: derived from title + artist + discogs_release_id.
+          For Spotify-only rows: derived from album_name + artists.
         tests:
           - unique
           - not_null
@@ -156,26 +160,34 @@ models:
         tests:
           - not_null
       - name: artist
-        description: Artist display name with Discogs disambiguation suffix stripped.
+        description: Artist display name. Discogs disambiguation suffix stripped for MusicBuddy rows.
         tests:
           - not_null
       - name: genres
-        description: Comma-separated genres. Null if not set in MusicBuddy.
+        description: >
+          Genres string. Comma-separated for MusicBuddy rows; JSON array for Spotify-only rows
+          (enriched from followed artists — album genres are almost always empty in the Spotify API).
       - name: release_year
-        description: Original release year.
+        description: Release year. Extracted from Spotify release_date string for Spotify rows.
       - name: discogs_release_id
-        description: Discogs release identifier. Null if not matched.
+        description: Discogs release identifier. Null for Spotify-only rows.
+      - name: spotify_album_id
+        description: Spotify native album identifier. Null for MusicBuddy-only rows.
+      - name: total_tracks
+        description: Total number of tracks on the album, from Spotify. Null for MusicBuddy-only rows.
+      - name: spotify_added_at
+        description: Timestamp when the album was saved to the Spotify library. Null for MusicBuddy-only rows.
       - name: rating
-        description: Personal rating on a 1–5 scale. Null for unrated albums (MusicBuddy stores 0 for unrated).
+        description: Personal rating on a 0–5 scale. Null for unrated or Spotify-only albums.
       - name: is_rated
         description: True if rating is not null.
       - name: country
         description: Country of the artist from the artist_countries seed. Null if not in seed.
-      - name: source
-        description: Always 'musicbuddy' — single source domain.
+      - name: source_name
+        description: Data origin — 'musicbuddy', 'spotify', or 'both'.
         tests:
           - accepted_values:
-              values: ["musicbuddy"]
+              values: ["musicbuddy", "spotify", "both"]
 
   # ── Cross-domain ──────────────────────────────────────────────────────────
 
