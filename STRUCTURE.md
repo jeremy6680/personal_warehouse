@@ -6,76 +6,105 @@ This document explains what every folder and file in this project is for and how
 
 ## Repository layout
 
-```
-personal_warehouse/               ← dbt project root (git repo)
+personal_warehouse/ ← dbt project root (git repo)
 │
-├── data/                         ← Raw CSV exports (loaded into BigQuery externally)
-│   ├── bookbuddy.csv             ← BookBuddy full library export
-│   ├── goodreads.csv             ← Goodreads reading export
-│   ├── letterboxd.csv            ← Letterboxd diary export
-│   ├── moviebuddy.csv            ← MovieBuddy full collection export
-│   └── musicbuddy.csv            ← MusicBuddy album collection export
+├── data/ ← Raw CSV exports (loaded into BigQuery externally)
+│ ├── bookbuddy.csv ← BookBuddy full library export
+│ ├── goodreads.csv ← Goodreads reading export
+│ ├── letterboxd.csv ← Letterboxd diary export
+│ ├── moviebuddy.csv ← MovieBuddy full collection export
+│ └── musicbuddy.csv ← MusicBuddy album collection export
 │
 ├── models/
-│   ├── staging/
-│   │   └── csv/                  ← One sub-folder per source group
-│   │       ├── _csv__sources.yml ← Source declarations + staging model docs (BigQuery raw_personal)
-│   │       ├── stg_csv__goodreads.sql
-│   │       ├── stg_csv__bookbuddy.sql
-│   │       ├── stg_csv__letterboxd.sql
-│   │       ├── stg_csv__moviebuddy.sql
-│   │       └── stg_csv__musicbuddy.sql
-│   │
-│   ├── intermediate/
-│   │   ├── _intermediate__models.yml  ← Intermediate model docs and tests (all domains)
-│   │   ├── books/
-│   │   │   └── int_books__unified.sql          ← BookBuddy + Goodreads union (3 cases)
-│   │   ├── films/
-│   │   │   └── int_movies__unified.sql         ← MovieBuddy + Letterboxd union (3 cases)
-│   │   └── music/
-│   │       └── int_music__collection.sql       ← MusicBuddy enriched with country
-│   │
-│   └── mart/
-│       ├── _mart__models.yml             ← Mart model docs and tests (all domains)
-│       ├── books/
-│       │   └── mrt_books__collection.sql         ← Full book collection (read + unread)
-│       ├── films/
-│       │   └── mrt_movies__collection.sql        ← Full movie/TV collection (watched + wishlist)
-│       ├── music/
-│       │   └── mrt_music__collection.sql         ← Full album collection with country
-│       └── cross_domain/
-│           ├── mrt_media__summary.sql            ← Cross-domain counts, avg ratings, monthly pace
-│           └── mrt_media__country_index.sql      ← One row per (country, domain, item)
+│ ├── overview.md ← dbt docs landing page (overview block)
+│ ├── staging/
+│ │ ├── csv/ ← CSV-backed sources (raw_personal dataset)
+│ │ │ ├── \_csv**sources.yml ← Source declarations + staging model docs
+│ │ │ ├── \_csv**docs.md ← Docs blocks for CSV staging models
+│ │ │ ├── stg_csv**goodreads.sql
+│ │ │ ├── stg_csv**bookbuddy.sql
+│ │ │ ├── stg_csv**letterboxd.sql
+│ │ │ ├── stg_csv**moviebuddy.sql
+│ │ │ └── stg_csv**musicbuddy.sql
+│ │ └── spotify/ ← Spotify API source (raw_personal dataset) [planned]
+│ │ ├── \_spotify**sources.yml
+│ │ ├── \_spotify**docs.md
+│ │ ├── stg_spotify**saved_albums.sql
+│ │ ├── stg_spotify**saved_tracks.sql
+│ │ └── stg_spotify**followed_artists.sql
+│ │
+│ ├── intermediate/
+│ │ ├── \_intermediate**models.yml ← Intermediate model docs and tests (all domains)
+│ │ ├── books/
+│ │ │ └── int_books**unified.sql
+│ │ ├── films/
+│ │ │ └── int_movies**unified.sql
+│ │ └── music/
+│ │ └── int_music**collection.sql ← Will be extended with Spotify data [planned]
+│ │
+│ └── mart/
+│ ├── \_mart**models.yml
+│ ├── books/
+│ │ ├── mrt_books**reading_history.sql
+│ │ └── mrt_books**collection.sql
+│ ├── films/
+│ │ ├── mrt_movies**watching_history.sql
+│ │ └── mrt_movies**collection.sql
+│ ├── music/
+│ │ └── mrt_music**collection.sql ← Will include Spotify albums [planned]
+│ └── shared/
+│ ├── mrt_media**summary.sql
+│ └── mrt_media**country_index.sql
 │
-├── seeds/                        ← Static reference CSVs managed by dbt seed
-│   ├── _seeds.yml                ← Seed documentation and tests (all domains)
-│   ├── books/
-│   │   └── author_countries.csv  ← Author → country mapping
-│   ├── films/
-│   │   ├── director_countries.csv ← Director → country mapping
-│   │   └── film_countries.csv    ← (title, release_year) → country fallback for Letterboxd-only rows
-│   └── music/
-│       └── artist_countries.csv  ← Artist → country mapping
+├── seeds/ ← Static reference CSVs managed by dbt seed
+│ ├── \_seeds.yml ← Seed documentation and tests (all domains)
+│ ├── books/
+│ │ └── author_countries.csv
+│ ├── films/
+│ │ ├── director_countries.csv
+│ │ └── film_countries.csv
+│ └── music/
+│ └── artist_countries.csv
 │
-├── analyses/                     ← Ad-hoc SQL (not materialised by dbt)
-├── macros/                       ← Reusable Jinja macros
-│   └── tests/                    ← Custom generic test macros
-├── snapshots/                    ← SCD Type 2 snapshots
-├── tests/                        ← Singular (one-off) data tests
-├── target/                       ← Compiled artifacts (git-ignored)
-├── logs/                         ← dbt logs (git-ignored)
+├── scripts/
+│ ├── bq_load.sh ← Loads CSV files into raw_personal via bq load
+│ └── spotify_to_bq.py ← Fetches Spotify data via API → writes to raw_personal [planned]
 │
-├── dbt_project.yml               ← Project config (name, paths, materialisation defaults)
-├── packages.yml                  ← dbt package dependencies (dbt_utils, dbt_expectations)
-├── profiles.yml                  ← NOT committed — lives at ~/.dbt/profiles.yml
+├── dags/
+│ └── spotify_ingest.py ← Airflow DAG: spotify_to_bq.py → dbt build [planned]
+│
+├── analyses/ ← Ad-hoc SQL (not materialised by dbt)
+├── macros/ ← Reusable Jinja macros
+│ └── tests/ ← Custom generic test macros
+├── snapshots/ ← SCD Type 2 snapshots
+├── tests/ ← Singular (one-off) data tests
+├── target/ ← Compiled artifacts (git-ignored)
+├── logs/ ← dbt logs (git-ignored)
+│
+├── requirements.txt ← Python dependencies (spotipy, google-cloud-bigquery…)
+├── .env.example ← Env var template (SPOTIFY_CLIENT_ID, etc.) — .env not committed
+├── dbt_project.yml ← Project config (name, paths, materialisation defaults)
+├── packages.yml ← dbt package dependencies (dbt_utils, dbt_expectations)
+├── profiles.yml ← NOT committed — lives at ~/.dbt/profiles.yml
 ├── .gitignore
 │
-├── CLAUDE.md                     ← AI assistant instructions and code standards
-├── CONTEXT.md                    ← Project goals and data source descriptions
-├── DECISIONS.md                  ← Architecture decision records
-├── NEXT_STEPS.md                 ← Current priorities
-└── STRUCTURE.md                  ← This file
-```
+├── CLAUDE.md ← AI assistant instructions and code standards
+├── CONTEXT.md ← Project goals and data source descriptions
+├── DECISIONS.md ← Architecture decision records
+├── NEXT_STEPS.md ← Current priorities
+└── STRUCTURE.md ← This file
+
+---
+
+## BigQuery datasets
+
+| Dataset              | Contenu                                                                                                       | Alimenté par              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `raw_personal`       | Tables brutes de toutes les sources : CSV exports (`bookbuddy`, `goodreads`, etc.) + tables API (`spotify_*`) | `bq load`, scripts Python |
+| `personal_warehouse` | Vues et tables dbt : `stg_*`, `int_*`, `mrt_*`                                                                | `dbt build`               |
+
+Toutes les sources brutes atterrissent dans `raw_personal`, quelle que soit leur méthode d'ingestion.
+Les staging models y accèdent via `source()` ; dbt ne touche jamais directement à ce dataset.
 
 ---
 
@@ -83,29 +112,28 @@ personal_warehouse/               ← dbt project root (git repo)
 
 ### `data/` vs `seeds/`
 
-These folders look similar but serve opposite purposes:
-
 |                 | `data/`                     | `seeds/`         |
 | --------------- | --------------------------- | ---------------- |
 | Who loads it?   | External (bq load, scripts) | dbt (`dbt seed`) |
-| Source of truth | BigQuery / Postgres         | dbt repo         |
+| Source of truth | BigQuery `raw_personal`     | dbt repo         |
 | Size            | Can be large                | Small only       |
 | Changes         | From upstream app exports   | Manually edited  |
 | Referenced via  | `source()`                  | `ref()`          |
 
-All five media-tracking CSVs belong in `data/` because they come from external apps and could be replaced by an API integration in the future. The three `*_countries` seeds belong in `seeds/` because they are small, manually maintained reference tables that a data engineer would never ETL.
+All five media-tracking CSVs belong in `data/` because they come from external apps and may be
+replaced by API integrations in the future. The `*_countries` seeds belong in `seeds/` because
+they are small, manually maintained reference tables.
 
-### `models/staging/csv/` — source grouping
+### `models/staging/csv/` vs `models/staging/spotify/`
 
-The `csv/` sub-folder groups all CSV-backed sources together. If a future source (e.g., a Spotify API connector via Airbyte) is added, it would get its own sub-folder: `models/staging/spotify/`.
+Each source group gets its own sub-folder and its own `_<source>__sources.yml`. Both point to
+`raw_personal` as their BigQuery dataset — the sub-folder separation is a dbt organisation
+convention, not a warehouse-level distinction.
 
-The `_csv__sources.yml` file declares the BigQuery tables in `raw_personal` that back these models, and also documents all five staging models in the same file.
+### `scripts/` vs `dags/`
 
-### `models/intermediate/` — domain subfolders
-
-Intermediate models are organised by domain (`books/`, `films/`, `music/`). All documentation lives in a single `_intermediate__models.yml` at the root of `models/intermediate/`.
-
-This mirrors the `seeds/` folder structure and makes it easy to extend each domain independently.
+- `scripts/` — standalone Python/shell scripts that can be run directly (`python spotify_to_bq.py`)
+- `dags/` — Airflow DAG definitions that orchestrate those scripts + dbt runs on a schedule
 
 ---
 
@@ -121,10 +149,15 @@ Double underscore `__` separates source/domain from entity.
 
 ### YAML files
 
-- Sources + staging docs: `_<source>__sources.yml` (e.g., `_csv__sources.yml`)
+- Sources + staging docs: `_<source>__sources.yml` (e.g., `_csv__sources.yml`, `_spotify__sources.yml`)
 - Intermediate docs: `_intermediate__models.yml`
 - Mart docs: `_mart__models.yml`
 - Seeds docs: `_seeds.yml`
+
+### BigQuery raw tables — Spotify prefix
+
+Spotify tables in `raw_personal` use a `spotify_` prefix to avoid collisions with CSV-backed tables:
+`spotify_saved_albums`, `spotify_saved_tracks`, `spotify_followed_artists`.
 
 ### Columns
 
@@ -136,15 +169,18 @@ Double underscore `__` separates source/domain from entity.
 
 ### Surrogate keys
 
-Staging models generate surrogate keys via `dbt_utils.generate_surrogate_key([...])` on natural composite columns. The formula is kept stable so the same input always produces the same ID, enabling cross-source joins in intermediate.
+Staging models generate surrogate keys via `dbt_utils.generate_surrogate_key([...])`.
 
-| Model | Key column | Source columns |
-|---|---|---|
-| `stg_csv__bookbuddy` | `book_id` | `['title', 'author', 'isbn']` |
-| `stg_csv__letterboxd` | `movie_id` | `['watched_date', 'film_name']` |
-| `stg_csv__moviebuddy` | `movie_id` | `['title', 'release_year']` |
-| `stg_csv__musicbuddy` | `album_id` | `['title', 'artist', 'discogs_release_id']` |
-| `stg_csv__goodreads` | `book_id` | Raw Goodreads string ID (stable source ID) |
+| Model                           | Key column  | Source columns                             |
+| ------------------------------- | ----------- | ------------------------------------------ |
+| `stg_csv__bookbuddy`            | `book_id`   | `['title', 'author']`                      |
+| `stg_csv__letterboxd`           | `movie_id`  | `['watched_date', 'film_name']`            |
+| `stg_csv__moviebuddy`           | `movie_id`  | `['title', 'release_year']`                |
+| `stg_csv__musicbuddy`           | `album_id`  | `['title', 'artist']`                      |
+| `stg_csv__goodreads`            | `book_id`   | Raw Goodreads string ID (stable source ID) |
+| `stg_spotify__saved_albums`     | `album_id`  | Spotify `album_id` (stable source ID)      |
+| `stg_spotify__saved_tracks`     | `track_id`  | Spotify `track_id` (stable source ID)      |
+| `stg_spotify__followed_artists` | `artist_id` | Spotify `artist_id` (stable source ID)     |
 
 ---
 

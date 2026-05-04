@@ -46,7 +46,7 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 
 ---
 
-## Infrastructure and tooling
+## Infrastructure and tooling ✅
 
 - [x] `packages.yml` configured with `dbt_utils` and `dbt_expectations`
 - [x] `dbt deps` — packages installed
@@ -56,10 +56,71 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 
 ---
 
+## Spotify ingestion — Python script (next focus)
+
+Goal: replace the manual MusicBuddy CSV refresh with a scheduled Python pipeline that pulls
+liked tracks, saved albums, and followed artists from the Spotify API and writes them directly
+into BigQuery `raw_personal`.
+
+### Ingestion script
+
+- [ ] Create `scripts/spotify_to_bq.py` — authenticates via Spotipy (OAuth2 PKCE), fetches
+      saved albums, liked tracks, and followed artists, writes to BigQuery `raw_personal` dataset
+- [ ] Create `scripts/spotify_auth.py` (or inline) — handles token refresh and storage
+      (token cached locally, never committed)
+- [ ] Add `spotipy` and `google-cloud-bigquery` to `requirements.txt`
+- [ ] Add `.env.example` documenting required env vars (`SPOTIFY_CLIENT_ID`,
+      `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`, `GOOGLE_APPLICATION_CREDENTIALS`)
+- [ ] Update `.gitignore` — exclude `.env`, `spotify_token_cache` / `.cache`
+
+### BigQuery target tables (in `raw_personal`)
+
+- [ ] `raw_personal.spotify_saved_albums` — album_id, name, artists, release_date,
+      genres, total_tracks, added_at
+- [ ] `raw_personal.spotify_saved_tracks` — track_id, name, artists, album_name,
+      duration_ms, added_at, audio_features (danceability, energy, valence, tempo…)
+- [ ] `raw_personal.spotify_followed_artists` — artist_id, name, genres, popularity,
+      followers
+
+### Airflow DAG
+
+- [ ] Create `dags/spotify_ingest.py` — daily DAG that runs `spotify_to_bq.py` then
+      triggers `dbt build --select tag:spotify`
+- [ ] Tag relevant dbt models with `+tag: spotify` in `dbt_project.yml`
+
+### dbt staging models
+
+- [ ] `models/staging/spotify/stg_spotify__saved_albums.sql`
+- [ ] `models/staging/spotify/stg_spotify__saved_tracks.sql`
+- [ ] `models/staging/spotify/stg_spotify__followed_artists.sql`
+- [ ] `models/staging/spotify/_spotify__sources.yml` — source declarations pointing to
+      `raw_personal` BigQuery tables
+
+### dbt documentation (mandatory per CLAUDE.md)
+
+- [ ] `models/staging/spotify/_spotify__docs.md` — docs blocks for all three staging models
+      and their columns (four-section format for mart models)
+- [ ] Update `models/overview.md` — add Spotify as a new source in the data sources table
+- [ ] Add column-level descriptions for every column in `_spotify__sources.yml`
+
+### Intermediate update
+
+- [ ] Extend `int_music__collection` (or create `int_music__unified`) to union
+      MusicBuddy CSV with Spotify saved albums — dedup on `lower(trim(artist)) + lower(trim(title))`;
+      `source_name` column to track origin; document matching strategy in `DECISIONS.md`
+
+### Mart update
+
+- [ ] Extend `mrt_music__collection` to include Spotify-sourced albums and tracks
+- [ ] Add `mrt_music__listening_history` (Spotify saved tracks with audio features) if
+      the track-level data is rich enough to warrant a separate mart model
+
+---
+
 ## Future / nice to have
 
-- [x] `seeds/films/film_countries.csv` — (title, release_year, country) mapping for Letterboxd-only films that have no director in `director_countries`; same pattern as existing seeds
-- [x] Looker Studio or Metabase dashboard connected to mart tables — Metabase self-hosted on Hetzner via Coolify at https://culture.jeremymarchandeau.com
-- [ ] Schedule CSV refresh + `dbt build` (cron or Cloud Scheduler)
-- [ ] Explore Spotify API via Airbyte to replace/supplement MusicBuddy CSV
+- [x] `seeds/films/film_countries.csv` — (title, release_year, country) mapping for Letterboxd-only films
+- [ ] Looker Studio or Metabase dashboard connected to mart tables
+- [ ] Schedule CSV refresh + `dbt build` for existing CSV sources (cron or Cloud Scheduler)
 - [ ] TMDB-based movie matching once Letterboxd exports include TMDB IDs
+- [ ] Deezer ingestion via custom Python script (same pattern as Spotify) if needed
