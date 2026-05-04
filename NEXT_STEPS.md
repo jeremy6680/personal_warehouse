@@ -56,31 +56,26 @@ Work items are listed in recommended order. Complete items are checked off. Add 
 
 ---
 
-## Spotify ingestion — Python script (next focus)
+## Spotify ingestion ✅
 
 Goal: replace the manual MusicBuddy CSV refresh with a scheduled Python pipeline that pulls
 liked tracks, saved albums, and followed artists from the Spotify API and writes them directly
 into BigQuery `raw_personal`.
 
-### Ingestion script
+### Ingestion script ✅
 
-- [ ] Create `scripts/spotify_to_bq.py` — authenticates via Spotipy (OAuth2 PKCE), fetches
-      saved albums, liked tracks, and followed artists, writes to BigQuery `raw_personal` dataset
-- [ ] Create `scripts/spotify_auth.py` (or inline) — handles token refresh and storage
-      (token cached locally, never committed)
-- [ ] Add `spotipy` and `google-cloud-bigquery` to `requirements.txt`
-- [ ] Add `.env.example` documenting required env vars (`SPOTIFY_CLIENT_ID`,
-      `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`, `GOOGLE_APPLICATION_CREDENTIALS`)
-- [ ] Update `.gitignore` — exclude `.env`, `spotify_token_cache` / `.cache`
+- [x] `scripts/spotify_to_bq.py` — authenticates via Spotipy (OAuth2), fetches saved albums,
+      saved tracks, and followed artists; full-refresh write to BigQuery `raw_personal`
+- [x] Token auth inline — OAuth2 token cached in `.spotify_cache` (git-ignored)
+- [x] `requirements.txt` — spotipy, google-cloud-bigquery, python-dotenv
+- [x] `.env.example` — documents required env vars
+- [x] `.gitignore` — `.spotify_cache` excluded
 
-### BigQuery target tables (in `raw_personal`)
+### BigQuery target tables (in `raw_personal`) ✅
 
-- [ ] `raw_personal.spotify_saved_albums` — album_id, name, artists, release_date,
-      genres, total_tracks, added_at
-- [ ] `raw_personal.spotify_saved_tracks` — track_id, name, artists, album_name,
-      duration_ms, added_at, audio_features (danceability, energy, valence, tempo…)
-- [ ] `raw_personal.spotify_followed_artists` — artist_id, name, genres, popularity,
-      followers
+- [x] `raw_personal.spotify_saved_albums` — 119 rows
+- [x] `raw_personal.spotify_saved_tracks` — 254 rows (audio features NULL — endpoint deprecated Nov 2024)
+- [x] `raw_personal.spotify_followed_artists` — 67 rows
 
 ### Airflow DAG
 
@@ -88,32 +83,25 @@ into BigQuery `raw_personal`.
       triggers `dbt build --select tag:spotify`
 - [ ] Tag relevant dbt models with `+tag: spotify` in `dbt_project.yml`
 
-### dbt staging models
+### dbt staging models ✅
 
-- [ ] `models/staging/spotify/stg_spotify__saved_albums.sql`
-- [ ] `models/staging/spotify/stg_spotify__saved_tracks.sql`
-- [ ] `models/staging/spotify/stg_spotify__followed_artists.sql`
-- [ ] `models/staging/spotify/_spotify__sources.yml` — source declarations pointing to
-      `raw_personal` BigQuery tables
+- [x] `models/staging/spotify/stg_spotify__saved_albums.sql`
+- [x] `models/staging/spotify/stg_spotify__saved_tracks.sql`
+- [x] `models/staging/spotify/stg_spotify__followed_artists.sql`
+- [x] `models/staging/spotify/_spotify__sources.yml` — source declarations + full column docs + tests
 
-### dbt documentation (mandatory per CLAUDE.md)
+### Intermediate update ✅
 
-- [ ] `models/staging/spotify/_spotify__docs.md` — docs blocks for all three staging models
-      and their columns (four-section format for mart models)
-- [ ] Update `models/overview.md` — add Spotify as a new source in the data sources table
-- [ ] Add column-level descriptions for every column in `_spotify__sources.yml`
-
-### Intermediate update
-
-- [ ] Extend `int_music__collection` (or create `int_music__unified`) to union
-      MusicBuddy CSV with Spotify saved albums — dedup on `lower(trim(artist)) + lower(trim(title))`;
-      `source_name` column to track origin; document matching strategy in `DECISIONS.md`
+- [x] `int_music__unified` — three-case union (matched / musicbuddy_only / spotify_only);
+      title+artist matching; Spotify album genres enriched via followed_artists join;
+      release_year extracted from Spotify variable-precision release_date string
 
 ### Mart update
 
-- [ ] Extend `mrt_music__collection` to include Spotify-sourced albums and tracks
-- [ ] Add `mrt_music__listening_history` (Spotify saved tracks with audio features) if
-      the track-level data is rich enough to warrant a separate mart model
+- [x] `mrt_music__collection` — extended to source from `int_music__unified`; adds
+      spotify_album_id, total_tracks, spotify_added_at, source_name columns
+- [ ] `mrt_music__listening_history` — Spotify saved tracks with audio features
+      (deferred — audio features endpoint deprecated; columns are all NULL for now)
 
 ---
 

@@ -287,3 +287,37 @@ A decision was needed on where to land Spotify raw data.
 **Trade-offs:** All raw tables share the same dataset — table naming must be explicit
 (`spotify_*` prefix) to avoid collisions with existing CSV-backed tables (`bookbuddy`,
 `letterboxd`, etc.).
+
+---
+
+## ADR-014 — `int_music__unified`: MusicBuddy + Spotify union with genre enrichment via followed artists
+
+**Date:** 2025
+**Status:** Active
+
+**Context:** Adding Spotify as a second music source required unifying it with the existing
+MusicBuddy CSV in the intermediate layer. The naming pattern for multi-source intermediate models
+in this project is `__unified` (see `int_books__unified`, `int_movies__unified`).
+
+**Decision:** Replace `int_music__collection` (single-source) with `int_music__unified`
+(multi-source three-case union). Genre enrichment for Spotify albums resolved by joining
+`stg_spotify__followed_artists` on the primary artist Spotify ID (`JSON_VALUE(artist_ids, '$[0]')`).
+
+**Rationale:**
+
+- Consistent naming convention with the other two domains
+- `album.genres` is almost always `[]` in the Spotify API — genres are stored on Artist objects,
+  not Album objects. Joining `followed_artists` on `artist_ids[0]` recovers genre data for albums
+  by followed artists without requiring a separate API call
+- Single-pass title+artist matching (no two-pass ISBN fallback needed — music has no equivalent)
+- Surrogate key for Spotify-only rows generated from `album_name + artists` — consistent with the
+  other source-only cases in the unified models
+
+**Matching strategy:**
+- Single pass: `lower(trim(artist))` + `lower(trim(title))`
+- Three-case output: `matched`, `musicbuddy_only`, `spotify_only`
+- For multi-artist Spotify albums, the full `artists` string is used as the match key — may miss
+  matches where MusicBuddy stores only the primary artist name
+
+**Trade-offs:** `int_music__collection` is now an orphan model (no downstream `ref()`). It still
+compiles correctly but is no longer used — can be deleted manually from BigQuery and the repo.

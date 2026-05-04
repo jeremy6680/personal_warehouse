@@ -118,17 +118,22 @@ models:
           joined from film_countries on (title, release_year). Null if no matching
           entry exists in either seed.
 
-  - name: int_music__collection
+  - name: int_music__unified
     description: >
-      MusicBuddy collection enriched with artist country of origin.
-      Single-source model — country is joined from the artist_countries seed
-      on normalized artist name. Discogs API enrichment (label, format, release
-      country) can be added here when a stg_api__discogs staging model is available.
+      Full union of MusicBuddy and Spotify saved albums, deduplicated to one row per album.
+      Three output cases: matched (in both), musicbuddy_only, spotify_only.
+      Matching is on normalized artist + title (single pass).
+      Spotify album genres are almost always empty ([]) — enriched via a LEFT JOIN on
+      stg_spotify__followed_artists using the primary artist Spotify ID.
+      country is joined from the artist_countries seed on normalized artist name.
+      artist_display strips Discogs disambiguation suffixes for MusicBuddy rows.
     config:
       tags: ["intermediate", "music"]
     columns:
       - name: album_id
-        description: Surrogate key derived from title + artist, carried from staging.
+        description: >
+          Primary key. For MusicBuddy rows: surrogate key from title + artist + discogs_release_id.
+          For Spotify-only rows: surrogate key from album_name + artists.
         tests:
           - unique
           - not_null
@@ -137,20 +142,32 @@ models:
         tests:
           - not_null
       - name: artist
-        description: Raw artist name as exported from MusicBuddy, including Discogs disambiguation suffix (e.g. "Ayo (2)"). Used as join key and for surrogate key stability.
+        description: >
+          Raw artist name. For MusicBuddy rows: includes Discogs disambiguation suffix.
+          For Spotify rows: comma-separated artists string as returned by the API.
         tests:
           - not_null
       - name: artist_display
-        description: Artist name with Discogs disambiguation suffix stripped (e.g. "Ayo (2)" → "Ayo"). Use this column for display and reporting.
+        description: Artist name with Discogs disambiguation suffix stripped. For Spotify-only rows, same as artist.
       - name: genres
-        description: Comma-separated genres. Null if not set.
-      - name: release_year
-        description: Original release year.
-      - name: discogs_release_id
-        description: Discogs release identifier. Null if not matched.
-      - name: rating
-        description: Personal rating on a 0–5 scale. 0 means unrated.
-      - name: country
         description: >
-          Country of origin or nationality of the artist, joined from the
-          artist_countries seed. Null if the artist has no entry in the seed.
+          Genres string. Comma-separated for MusicBuddy rows; JSON array for Spotify-only rows
+          (enriched from stg_spotify__followed_artists — album genres are almost always empty in the Spotify API).
+      - name: release_year
+        description: Release year. Extracted from Spotify release_date string for Spotify rows.
+      - name: discogs_release_id
+        description: Discogs release identifier. Null for Spotify-only rows.
+      - name: spotify_album_id
+        description: Spotify native album identifier. Null for MusicBuddy-only rows.
+      - name: total_tracks
+        description: Total number of tracks on the album, from Spotify. Null for MusicBuddy-only rows.
+      - name: spotify_added_at
+        description: Timestamp when the album was saved to the Spotify library. Null for MusicBuddy-only rows.
+      - name: rating
+        description: Personal rating on a 0–5 scale. 0 means unrated. Null for Spotify-only rows.
+      - name: country
+        description: Country of the artist from the artist_countries seed. Null if not in seed.
+      - name: source_name
+        description: Data origin — 'musicbuddy', 'spotify', or 'both'.
+      - name: match_type
+        description: Match strategy used — 'title_artist' for matched rows, null otherwise.

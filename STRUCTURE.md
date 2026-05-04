@@ -26,9 +26,8 @@ personal_warehouse/ ← dbt project root (git repo)
 │ │ │ ├── stg_csv**letterboxd.sql
 │ │ │ ├── stg_csv**moviebuddy.sql
 │ │ │ └── stg_csv**musicbuddy.sql
-│ │ └── spotify/ ← Spotify API source (raw_personal dataset) [planned]
+│ │ └── spotify/ ← Spotify API source (raw_personal dataset)
 │ │ ├── \_spotify**sources.yml
-│ │ ├── \_spotify**docs.md
 │ │ ├── stg_spotify**saved_albums.sql
 │ │ ├── stg_spotify**saved_tracks.sql
 │ │ └── stg_spotify**followed_artists.sql
@@ -40,7 +39,8 @@ personal_warehouse/ ← dbt project root (git repo)
 │ │ ├── films/
 │ │ │ └── int_movies**unified.sql
 │ │ └── music/
-│ │ └── int_music**collection.sql ← Will be extended with Spotify data [planned]
+│ │ ├── int_music**collection.sql ← Orphan — superseded by int_music__unified
+│ │ └── int_music**unified.sql ← MusicBuddy + Spotify union
 │ │
 │ └── mart/
 │ ├── \_mart**models.yml
@@ -51,7 +51,7 @@ personal_warehouse/ ← dbt project root (git repo)
 │ │ ├── mrt_movies**watching_history.sql
 │ │ └── mrt_movies**collection.sql
 │ ├── music/
-│ │ └── mrt_music**collection.sql ← Will include Spotify albums [planned]
+│ │ └── mrt_music**collection.sql ← MusicBuddy + Spotify albums
 │ └── shared/
 │ ├── mrt_media**summary.sql
 │ └── mrt_media**country_index.sql
@@ -68,7 +68,7 @@ personal_warehouse/ ← dbt project root (git repo)
 │
 ├── scripts/
 │ ├── bq_load.sh ← Loads CSV files into raw_personal via bq load
-│ └── spotify_to_bq.py ← Fetches Spotify data via API → writes to raw_personal [planned]
+│ └── spotify_to_bq.py ← Fetches Spotify data via API → writes to raw_personal
 │
 ├── dags/
 │ └── spotify_ingest.py ← Airflow DAG: spotify_to_bq.py → dbt build [planned]

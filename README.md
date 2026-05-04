@@ -20,15 +20,16 @@ The end goal is a unified, queryable history of books read, movies watched, and 
 
 ## Data sources
 
-| Source | App | What it tracks |
-|---|---|---|
-| `goodreads` | Goodreads | Books read, ratings, shelves |
-| `bookbuddy` | BookBuddy | Full book collection (read + wishlist) |
-| `letterboxd` | Letterboxd | Movies watched, ratings, diary |
-| `moviebuddy` | MovieBuddy | Full movie/TV collection (watched + wishlist) |
-| `musicbuddy` | MusicBuddy | Music album collection via Discogs |
+| Source | App | Ingestion | What it tracks |
+|---|---|---|---|
+| `goodreads` | Goodreads | CSV → `bq load` | Books read, ratings, shelves |
+| `bookbuddy` | BookBuddy | CSV → `bq load` | Full book collection (read + wishlist) |
+| `letterboxd` | Letterboxd | CSV → `bq load` | Movies watched, ratings, diary |
+| `moviebuddy` | MovieBuddy | CSV → `bq load` | Full movie/TV collection (watched + wishlist) |
+| `musicbuddy` | MusicBuddy | CSV → `bq load` | Music album collection via Discogs |
+| `spotify` | Spotify | API → `scripts/spotify_to_bq.py` | Saved albums, saved tracks, followed artists |
 
-Raw CSV exports live in `data/` and are loaded into BigQuery manually via `bq load`. dbt never touches the raw files directly.
+CSV exports live in `data/` and are loaded into BigQuery via `bq load`. Spotify data is fetched via the Spotify Web API using `scripts/spotify_to_bq.py`.
 
 ---
 
@@ -39,7 +40,7 @@ Raw CSV exports live in `data/` and are loaded into BigQuery manually via `bq lo
 | Transformation | dbt Core |
 | Warehouse | BigQuery (`personal-warehouse-495013`) |
 | Local query engine | DuckDB (for dev/portfolio) |
-| Raw data | CSV exports loaded via `bq load` |
+| Raw data | CSV exports (`bq load`) + Spotify API (`scripts/spotify_to_bq.py`) |
 | Visualisation | Metabase (self-hosted on Hetzner via Coolify) |
 | Version control | Git |
 
@@ -97,7 +98,10 @@ See [NEXT_STEPS.md](NEXT_STEPS.md) for current priorities.
 | Seeds | `artist_countries` | Done |
 | Intermediate | `int_books__unified` | Done |
 | Intermediate | `int_movies__unified` | Done |
-| Intermediate | `int_music__collection` | Done |
+| Intermediate | `int_music__unified` | Done |
+| Staging | `stg_spotify__saved_albums` | Done |
+| Staging | `stg_spotify__saved_tracks` | Done |
+| Staging | `stg_spotify__followed_artists` | Done |
 | Mart | `mrt_books__collection` | Done |
 | Mart | `mrt_movies__collection` | Done |
 | Mart | `mrt_music__collection` | Done |
