@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS launchd job — runs Spotify ingestion daily at 09:30 Europe/Paris.
+  launchd schedules in local system time, so adjust Hour if your Mac is set
+  to a different timezone (09:30 Paris = 09:30 if Mac timezone is Europe/Paris).
+
+  Install (once):
+    cp scripts/spotify_launchd.plist ~/Library/LaunchAgents/com.jeremymarchandeau.spotify_ingest.plist
+    launchctl load ~/Library/LaunchAgents/com.jeremymarchandeau.spotify_ingest.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.jeremymarchandeau.spotify_ingest.plist
+
+  Run manually:
+    launchctl start com.jeremymarchandeau.spotify_ingest
+
+  Logs:
+    tail -f /tmp/spotify_ingest.log
+    tail -f /tmp/spotify_ingest_error.log
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.jeremymarchandeau.spotify_ingest</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>cd /Users/jeremymarchandeau/Code/personal/projects/personal_warehouse/personal_warehouse &amp;&amp; /Users/jeremymarchandeau/Code/personal/projects/personal_warehouse/.venv/bin/python scripts/spotify_to_bq.py &amp;&amp; /Users/jeremymarchandeau/Code/personal/projects/personal_warehouse/.venv/bin/dbt build --select tag:spotify+</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/spotify_ingest.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/spotify_ingest_error.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

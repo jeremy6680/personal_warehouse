@@ -81,7 +81,7 @@ into BigQuery `raw_personal`.
 
 - [x] `dags/spotify_ingest.py` — Airflow DAG written (kept as portfolio artefact); not used
       in practice due to persistent macOS SIGSEGV — see ADR-015
-- [ ] `scripts/spotify_launchd.plist` — macOS launchd job: daily at 09:30 Europe/Paris,
+- [x] `scripts/spotify_launchd.plist` — macOS launchd job: daily at 09:30 Europe/Paris,
       runs `spotify_to_bq.py` then `dbt build --select tag:spotify+`
 
 ### dbt staging models ✅
