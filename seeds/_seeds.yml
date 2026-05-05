@@ -94,3 +94,25 @@ seeds:
           combination_of_columns:
             - title
             - release_year
+
+  - name: country_iso_codes
+    description: >
+      Reference mapping of country names (as used in author_countries, director_countries,
+      and artist_countries seeds) to ISO 3166-1 alpha-3 codes. Used to enrich
+      mrt_media__country_index with a standardised country code column (iso_alpha3)
+      required by the Evidence.dev AreaMap choropleth component.
+      Join key is lower(trim(country_name)) — must match the country values
+      in the three domain seeds exactly (case-insensitive).
+    config:
+      tags: ["seeds", "geography", "reference"]
+    columns:
+      - name: country_name
+        description: Country name as it appears in the domain seeds (e.g., "United States", "South Korea").
+        tests:
+          - unique
+          - not_null
+      - name: iso_alpha3
+        description: ISO 3166-1 alpha-3 three-letter country code (e.g., "USA", "KOR"). Used as the join key for the Evidence AreaMap GeoJSON basemap.
+        tests:
+          - unique
+          - not_null

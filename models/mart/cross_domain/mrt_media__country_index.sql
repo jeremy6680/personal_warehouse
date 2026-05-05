@@ -6,9 +6,12 @@
 --              it. person_name is the author (books), primary director (movies),
 --              or artist (music). person_role identifies the type of person.
 --              Only rows with a known country are included.
+--              iso_alpha3 (ISO 3166-1 alpha-3) is joined from the country_iso_codes
+--              seed to enable choropleth map rendering in Evidence.dev.
 --              Enables queries like "show me all French media" without joining
 --              across three separate mart tables.
--- Dependencies: mrt_books__collection, mrt_movies__collection, mrt_music__collection
+-- Dependencies: mrt_books__collection, mrt_movies__collection, mrt_music__collection,
+--               country_iso_codes (seed)
 -- Adapter note: SPLIT/SAFE_OFFSET is BigQuery-specific (for primary director).
 --               For PostgreSQL replace with split_part(directors, ',', 1).
 -- ============================================================
@@ -30,6 +33,13 @@ movies AS (
 
 music AS (
     SELECT * FROM {{ ref('mrt_music__collection') }}
+),
+
+iso_codes AS (
+    SELECT
+        lower(trim(country_name)) AS country_key,
+        iso_alpha3
+    FROM {{ ref('country_iso_codes') }}
 ),
 
 books_spine AS (
@@ -81,4 +91,9 @@ combined AS (
     SELECT * FROM music_spine
 )
 
-SELECT * FROM combined
+SELECT
+    c.*,
+    iso.iso_alpha3
+FROM combined                                   AS c
+LEFT JOIN iso_codes                             AS iso
+    ON lower(trim(c.country)) = iso.country_key
