@@ -12,9 +12,12 @@ Media-tracking apps (Goodreads, Letterboxd, BookBuddy, MovieBuddy, MusicBuddy) e
 2. Cleans and standardises the data in the **staging layer**
 3. Joins and enriches across sources in the **intermediate layer**
 4. Produces dashboard-ready models in the **mart layer**
-5. Exposes the results in **[Metabase](https://culture.jeremymarchandeau.com/public/dashboard/8b911c69-24e7-4e62-ad6d-a5391b43062d)** — self-hosted on Hetzner via Coolify
+5. Exposes the results in **[Evidence.dev](https://mediatheque.jeremymarchandeau.com)** — static dashboard deployed on Netlify
 
 The end goal is a unified, queryable history of books read, movies watched, and music collected — with ratings, dates, and cross-domain analytics.
+
+👉 **Dashboard:** https://mediatheque.jeremymarchandeau.com  
+👉 **Dashboard repo:** https://github.com/jeremy6680/personal-warehouse-dashboard
 
 ---
 
@@ -41,7 +44,7 @@ CSV exports live in `data/` and are loaded into BigQuery via `bq load`. Spotify 
 | Warehouse | BigQuery (`personal-warehouse-495013`) |
 | Local query engine | DuckDB (for dev/portfolio) |
 | Raw data | CSV exports (`bq load`) + Spotify API (`scripts/spotify_to_bq.py`) |
-| Visualisation | Metabase (self-hosted on Hetzner via Coolify) |
+| Visualisation | Evidence.dev (static site) deployed on Netlify |
 | Version control | Git |
 
 ---
@@ -96,6 +99,7 @@ See [NEXT_STEPS.md](NEXT_STEPS.md) for current priorities.
 | Seeds | `author_countries` | Done |
 | Seeds | `director_countries` | Done |
 | Seeds | `artist_countries` | Done |
+| Seeds | `country_iso_codes` | Done |
 | Intermediate | `int_books__unified` | Done |
 | Intermediate | `int_movies__unified` | Done |
 | Intermediate | `int_music__unified` | Done |

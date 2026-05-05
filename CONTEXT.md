@@ -75,10 +75,19 @@ It also serves as a **portfolio project** demonstrating dbt analytics engineerin
 - `scripts/spotify_to_bq.py` — fetches saved albums, saved tracks, followed artists; full-refresh to BigQuery
 - Three staging models for Spotify data; integrated into `int_music__unified` and `mrt_music__collection`
 
+### Phase 5 — Evidence.dev dashboard ✅ Complete
+- Static site built with Evidence.dev, deployed on Netlify at **https://mediatheque.jeremymarchandeau.com**
+- GitHub repo: `jeremy6680/personal-warehouse-dashboard`
+- 9 pages (home, summary, world map, music/books/movies collection + stats) — fully in French
+- AreaMap choropleth world map using Natural Earth GeoJSON + ISO 3166-1 alpha-3 codes
+  (added `iso_alpha3` column to `mrt_media__country_index` via `country_iso_codes` seed)
+- Build triggered automatically on push; daily refresh automation pending (Netlify build hook)
+
 ### Long-term
-- ✅ Visualise in Metabase — self-hosted on Hetzner via Coolify at https://culture.jeremymarchandeau.com
 - ✅ Spotify API ingestion via custom Python script
-- Schedule automatic refreshes (Spotify script + CSV exports) via Airflow DAG
+- ✅ Evidence.dev dashboard — https://mediatheque.jeremymarchandeau.com
+- Schedule automatic refreshes (Netlify build hook triggered by launchd after daily dbt run)
+- Schedule CSV refresh + `dbt build` for existing CSV sources (cron or Cloud Scheduler)
 
 ---
 
@@ -92,6 +101,7 @@ Three reference CSVs live in `seeds/` and are managed by dbt (`dbt seed`):
 | `director_countries` | `seeds/films/director_countries.csv` | `int_movies__unified` |
 | `film_countries` | `seeds/films/film_countries.csv` | `int_movies__unified` (fallback for Letterboxd-only rows) |
 | `artist_countries` | `seeds/music/artist_countries.csv` | `int_music__unified` |
+| `country_iso_codes` | `seeds/geography/country_iso_codes.csv` | `mrt_media__country_index` (ISO 3166-1 alpha-3 for choropleth) |
 
 These are manually maintained reference tables mapping names to countries of origin. Join is always case-insensitive (`lower/trim` on both sides).
 

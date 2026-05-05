@@ -111,14 +111,17 @@ into BigQuery `raw_personal`.
 Goal: deploy a portfolio-grade dashboard on top of the mart tables using Evidence.dev (static
 site) hosted on Netlify (free tier). See ADR-016 for the full architecture rationale.
 
-### Setup
+### Setup ✅
 
-- [ ] Create a new GitHub repo `personal-warehouse-dashboard` for the Evidence project
-- [ ] Scaffold Evidence project: `npm create evidence@latest`
-- [ ] Configure the BigQuery connector (project ID + service account credentials)
-- [ ] Connect the GitHub repo to Netlify (auto-deploy on push)
-- [ ] Add BigQuery credentials as Netlify environment variables
-- [ ] Verify a first successful build on Netlify
+- [x] Create a new GitHub repo `personal-warehouse-dashboard` for the Evidence project
+- [x] Scaffold Evidence project: `npm create evidence@latest`
+- [x] Configure the BigQuery connector (project ID + service account credentials)
+- [x] Connect the GitHub repo to Netlify (auto-deploy on push)
+- [x] Add BigQuery credentials as Netlify environment variables
+      Note: Evidence env vars are case-sensitive for the option name portion —
+      use `client_email` / `private_key` (lowercase), not `CLIENT_EMAIL` / `PRIVATE_KEY`
+- [x] Verify a first successful build on Netlify
+- [x] Custom domain configured: https://mediatheque.jeremymarchandeau.com
 
 ### Daily refresh automation
 
@@ -126,37 +129,30 @@ site) hosted on Netlify (free tier). See ADR-016 for the full architecture ratio
 - [ ] Append `curl -X POST <NETLIFY_BUILD_HOOK_URL>` to `scripts/spotify_launchd.plist`
       (after the `dbt build` step) so the dashboard rebuilds daily at 09:30
 
-### Dashboard pages
+### Dashboard pages ✅
 
-- [ ] **Music — Collection** (`/music/collection`)
-      Full album table from `mrt_music__collection` with `<Dropdown>` filters on genre,
-      country, source; sortable by rating, release year, artist
-- [ ] **Music — Stats** (`/music/stats`)
-      Charts: albums by genre, albums by country (choropleth or bar), rating distribution,
-      top artists by album count
-- [ ] **Books — Collection** (`/books/collection`)
-      Full book table from `mrt_books__collection` with filters on status (Read / To Read),
-      genre, country
-- [ ] **Books — Reading history** (`/books/history`)
-      Timeline or table of finished books from `mrt_books__reading_history`; avg rating
-      over time, books read per year
-- [ ] **Movies — Collection** (`/movies/collection`)
-      Full movie/TV table from `mrt_movies__collection` with filters on content type,
-      genre, country
-- [ ] **Movies — Watching history** (`/movies/history`)
-      Table of watched films from `mrt_movies__watching_history`; watch count, avg rating,
-      films per year
-- [ ] **Cross-domain — Summary** (`/summary`)
-      Top-level stats from `mrt_media__summary`: item counts, avg ratings, monthly pace
-      per domain — good landing page / portfolio hero
-- [ ] **Cross-domain — World map** (`/map`)
-      Country index from `mrt_media__country_index`: items per country, coloured by domain
+- [x] **Home** (`/`) — intro, BigValue summary, navigation links
+- [x] **Music — Collection** (`/music/collection`) — full album table with Dropdown filters
+      on genre, country, source, rated-only toggle; BigValue KPIs
+- [x] **Music — Stats** (`/music/stats`) — charts by genre, country, decade, rating
+      distribution, top artists
+- [x] **Books — Collection** (`/books/collection`) — full book table with filters on
+      status, genre, country, read-only toggle; BigValue KPIs
+- [x] **Books — Stats** (`/books/stats`) — charts by status, genre, country, decade,
+      rating distribution, top authors
+- [x] **Movies — Collection** (`/movies/collection`) — full movie/TV table with filters
+      on content type, genre, country, watched-only toggle; BigValue KPIs
+- [x] **Movies — Stats** (`/movies/stats`) — charts by genre, country, decade, content
+      type, rating distribution, films watched per year, top directors
+- [x] **Cross-domain — Summary** (`/summary`) — top-level KPIs + bar charts per domain
+- [x] **Cross-domain — World map** (`/map`) — AreaMap choropleth (Natural Earth GeoJSON,
+      ADM0_A3 key), bar chart top 30 countries, filterable DataTable
+- [x] Full French translation of all authored content across all pages
 
 ### Polish
 
 - [ ] Custom Evidence theme (colours, typography) aligned with portfolio branding
 - [ ] `README.md` in the dashboard repo explaining the stack and how to run locally
-- [ ] Add the Netlify URL to the dbt project `CONTEXT.md` once deployed
 
 ---
 
