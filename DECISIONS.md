@@ -350,3 +350,70 @@ the pipeline is ever moved to a Linux environment (e.g., Hetzner VM).
 
 **Trade-offs:** `launchd` has no UI, no task history, no retry logic. For a personal daily script
 running in ~30s this is acceptable. Logs are written to a file for manual inspection.
+
+---
+
+## ADR-016 — Evidence.dev + Netlify as the visualisation layer
+
+**Date:** 2026-05-05
+**Status:** Active
+
+**Context:** The project needed a dashboard/visualisation layer to make mart tables accessible
+to non-SQL audiences and to serve as a portfolio artefact. Options evaluated:
+
+- **Looker Studio** — free, native BigQuery connector, but limited design control and no
+  interactive table filtering beyond basic controls
+- **Metabase (self-hosted on Hetzner/Coolify)** — richer UI, SQL-native, but resource-heavy
+  on the shared Hetzner instance and requires a persistent running service
+- **Evidence.dev + Netlify** — static site generator that runs SQL queries at build time;
+  outputs a plain HTML/JS site with no server required at runtime
+
+**Decision:** Use Evidence.dev as the dashboard framework, deployed as a static site on Netlify
+(free tier). The Evidence project lives in a dedicated GitHub repo, connected to Netlify for
+automatic deployments on push. Daily refresh is triggered by a Netlify build hook called at
+the end of the existing launchd pipeline (after `dbt build`).
+
+**Rationale:**
+
+- **Zero runtime cost:** Evidence generates a static site — no container, no server, no RAM
+  usage between rebuilds. Completely free on Netlify's free tier.
+- **Full interactivity:** Evidence's `<DataTable>` component supports sortable columns,
+  full-text search, pagination, and `<Dropdown>`/`<TextInput>` filter components — suitable
+  for displaying full collections (e.g., 100+ albums with genre/rating filters), not just
+  aggregate charts.
+- **Portfolio quality:** The Evidence stack (SQL + Markdown → static site) is a credible,
+  modern analytics engineering portfolio artefact — it demonstrates the full pipeline from
+  raw ingestion to a production-deployed dashboard.
+- **Tight dbt integration:** Evidence queries run directly against BigQuery mart tables via
+  the native BigQuery connector. No intermediate export or transformation needed — the mart
+  layer is the API.
+- **Automated refresh:** The existing launchd plist ends with a `dbt build`; appending a
+  `curl` call to the Netlify build hook completes the pipeline: Spotify ingest → dbt build
+  → Evidence rebuild → dashboard updated. No new scheduler or service required.
+
+**Architecture:**
+
+```
+macOS launchd (09:30 daily)
+  → scripts/spotify_to_bq.py   (Spotify → BigQuery raw_personal)
+  → dbt build --select tag:spotify+  (dbt transforms → mart tables)
+  → curl Netlify build hook    (triggers Evidence rebuild)
+      → Evidence queries BigQuery mart tables
+      → Netlify deploys static site
+```
+
+**Why Netlify over GitHub Actions + GitHub Pages:**
+
+- Netlify manages secrets (BigQuery credentials) natively as environment variables — no
+  GitHub Actions secrets configuration or workflow YAML needed
+- Netlify's build environment is better suited for Node.js projects (Evidence is npm-based)
+- Build hooks are a single `curl` call — simpler than triggering a GitHub Actions workflow
+- Netlify provides a clean public URL suitable for a portfolio link
+
+**Trade-offs:**
+
+- Evidence queries run at build time, not at request time — data is as fresh as the last
+  build (daily). Acceptable for a personal media collection that updates once a day.
+- Evidence's templating (SQL + Markdown) has a learning curve but is well-documented.
+- Netlify free tier has build minute limits (300 min/month) — a typical Evidence build
+  takes under 2 minutes, so the daily rebuild uses ~60 min/month, well within limits.
