@@ -106,10 +106,65 @@ into BigQuery `raw_personal`.
 
 ---
 
+## Evidence.dev dashboard (next priority)
+
+Goal: deploy a portfolio-grade dashboard on top of the mart tables using Evidence.dev (static
+site) hosted on Netlify (free tier). See ADR-016 for the full architecture rationale.
+
+### Setup
+
+- [ ] Create a new GitHub repo `personal-warehouse-dashboard` for the Evidence project
+- [ ] Scaffold Evidence project: `npm create evidence@latest`
+- [ ] Configure the BigQuery connector (project ID + service account credentials)
+- [ ] Connect the GitHub repo to Netlify (auto-deploy on push)
+- [ ] Add BigQuery credentials as Netlify environment variables
+- [ ] Verify a first successful build on Netlify
+
+### Daily refresh automation
+
+- [ ] Generate a Netlify build hook URL
+- [ ] Append `curl -X POST <NETLIFY_BUILD_HOOK_URL>` to `scripts/spotify_launchd.plist`
+      (after the `dbt build` step) so the dashboard rebuilds daily at 09:30
+
+### Dashboard pages
+
+- [ ] **Music — Collection** (`/music/collection`)
+      Full album table from `mrt_music__collection` with `<Dropdown>` filters on genre,
+      country, source; sortable by rating, release year, artist
+- [ ] **Music — Stats** (`/music/stats`)
+      Charts: albums by genre, albums by country (choropleth or bar), rating distribution,
+      top artists by album count
+- [ ] **Books — Collection** (`/books/collection`)
+      Full book table from `mrt_books__collection` with filters on status (Read / To Read),
+      genre, country
+- [ ] **Books — Reading history** (`/books/history`)
+      Timeline or table of finished books from `mrt_books__reading_history`; avg rating
+      over time, books read per year
+- [ ] **Movies — Collection** (`/movies/collection`)
+      Full movie/TV table from `mrt_movies__collection` with filters on content type,
+      genre, country
+- [ ] **Movies — Watching history** (`/movies/history`)
+      Table of watched films from `mrt_movies__watching_history`; watch count, avg rating,
+      films per year
+- [ ] **Cross-domain — Summary** (`/summary`)
+      Top-level stats from `mrt_media__summary`: item counts, avg ratings, monthly pace
+      per domain — good landing page / portfolio hero
+- [ ] **Cross-domain — World map** (`/map`)
+      Country index from `mrt_media__country_index`: items per country, coloured by domain
+
+### Polish
+
+- [ ] Custom Evidence theme (colours, typography) aligned with portfolio branding
+- [ ] `README.md` in the dashboard repo explaining the stack and how to run locally
+- [ ] Add the Netlify URL to the dbt project `CONTEXT.md` once deployed
+
+---
+
 ## Future / nice to have
 
 - [x] `seeds/films/film_countries.csv` — (title, release_year, country) mapping for Letterboxd-only films
-- [ ] Looker Studio or Metabase dashboard connected to mart tables
 - [ ] Schedule CSV refresh + `dbt build` for existing CSV sources (cron or Cloud Scheduler)
 - [ ] TMDB-based movie matching once Letterboxd exports include TMDB IDs
 - [ ] Deezer ingestion via custom Python script (same pattern as Spotify) if needed
+- [ ] `mrt_music__listening_history` — Spotify saved tracks with audio features
+      (deferred — audio features endpoint deprecated; all columns NULL for now)
