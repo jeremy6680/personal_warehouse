@@ -1,0 +1,105 @@
+domain,raw_genre,normalized_genre
+books,Fiction,Fiction
+books,Fiction & Literature,Fiction
+books,Science fiction English,Science-Fiction
+books,Biography & Autobiography,Biographie
+books,Biography,Biographie
+books,Travel,Voyage
+books,Travel & Adventure,Voyage
+books,Sports & Recreation,Sport
+books,Football,Sport
+books,Language Arts & Disciplines,Langue & Littérature
+books,Foreign Language Study,Langue & Littérature
+books,Literary Criticism,Langue & Littérature
+books,Literary Collections,Langue & Littérature
+books,Humor,Humour
+books,New Zealand wit and humor,Humour
+books,Cooking,Cuisine
+books,Crafts & Hobbies,Art & Création
+books,Art,Art & Création
+books,Design,Art & Création
+books,Photography,Photographie
+books,Japanese Art,Art & Création
+books,Cartoons and comics,Bande Dessinée
+books,Comics & Graphic Novels,Bande Dessinée
+books,Fantasy,Fantastique
+books,Family & Relationships,Famille & Relations
+books,Self-Help,Développement Personnel
+books,Psychology,Psychologie
+books,Social Science,Sciences Sociales
+books,Politics and government,Politique
+books,Social life and customs,Sciences Sociales
+books,Education,Éducation
+books,Computers,Informatique
+books,Gardening,Jardinage
+books,Juvenile fiction,Jeunesse
+books,Juvenile Nonfiction,Jeunesse
+books,Tales,Contes & Nouvelles
+books,Existentialism,Philosophie
+books,Dictionaries,Référence
+books,Horsemanship,Sport
+books,child soldiers,
+books,Incas,
+books,Police in fiction,
+books,In library,
+books,Internet Archive Wishlist,
+books,Accessible book,
+books,Patients,
+books,Young men,
+books,Japanese,
+books,Kabul (Afghanistan),
+books,Caulfield Holden (Fictitious character),
+books,Balkan Peninsula,
+books,Belgians,
+books,Authors French,
+books,Astronauts,
+movies,Drama,Drame
+movies,Drame,Drame
+movies,Comedy,Comédie
+movies,Comédie,Comédie
+movies,Action,Action
+movies,Action & Adventure,Action
+movies,Adventure,Aventure
+movies,Aventure,Aventure
+movies,Animation,Animation
+movies,Family,Famille
+movies,Familial,Famille
+movies,Kids,Famille
+movies,Thriller,Thriller
+movies,Romance,Romance
+movies,Crime,Crime
+movies,Fantasy,Fantastique
+movies,Fantastique,Fantastique
+movies,History,Histoire
+movies,Histoire,Histoire
+movies,Documentary,Documentaire
+movies,Documentaire,Documentaire
+movies,Music,Musique
+movies,Musique,Musique
+movies,Mystery,Mystère
+movies,Mystère,Mystère
+movies,Science Fiction,Science-Fiction
+movies,Science-Fiction,Science-Fiction
+movies,Sci-Fi & Fantasy,Science-Fiction
+movies,Science-Fiction & Fantastique,Science-Fiction
+movies,Western,Western
+movies,War,Guerre
+movies,Guerre,Guerre
+movies,Horror,Horreur
+movies,Horreur,Horreur
+movies,TV Movie,
+music,Rock,Rock
+music,Electronic,Électronique
+music,Pop,Pop
+music,Jazz,Jazz
+music,Folk,Folk / World / Country
+music,World,Folk / World / Country
+music,& Country,
+music,Hip Hop,Hip-Hop
+music,Funk / Soul,Funk / Soul
+music,Reggae,Reggae
+music,Latin,Latin
+music,Stage & Screen,Bandes Originales
+music,Blues,Blues
+music,Classical,Classique
+music,Non-Music,
