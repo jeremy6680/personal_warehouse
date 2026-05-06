@@ -164,3 +164,219 @@ site) hosted on Netlify (free tier). See ADR-016 for the full architecture ratio
 - [ ] Deezer ingestion via custom Python script (same pattern as Spotify) if needed
 - [ ] `mrt_music__listening_history` — Spotify saved tracks with audio features
       (deferred — audio features endpoint deprecated; all columns NULL for now)
+
+---
+
+## Cross-cutting refactoring (do this before new domains)
+
+These tasks impact existing models and must be addressed first.
+
+### Normalisation seeds (personal-warehouse)
+
+- [ ] Create `seeds/shared/genre_mapping.csv` — `(domain, raw_genre, normalized_genre)` mapping
+      Covers: films, books, music, manga, anime (ADR-022)
+- [ ] Create `seeds/shared/author_name_mapping.csv` — `(raw_name, canonical_name)` mapping
+      Known cases: `Hubert Selby` → `Hubert Selby Jr.` (ADR-023)
+- [ ] Create `seeds/shared/country_name_fr.csv` — `(country_en, country_fr)` mapping
+      Exposes French country names in mart models (ADR-026)
+- [ ] Create `seeds/shared/manual_ratings.csv` — `(domain, title, author_or_director_or_artist, rating, rated_at)` (ADR-024)
+- [ ] Update `seeds/_seeds.yml` with documentation for all new seeds
+
+### Books refactoring (personal-warehouse)
+
+- [ ] Remove `status` column from `mrt_books__collection` (ADR-025)
+- [ ] Remove `WHERE status = 'Read'` filter from `mrt_books__reading_history` (ADR-025)
+- [ ] Apply `genre_mapping` in `int_books__unified` to normalise genres into French
+- [ ] Apply `author_name_mapping` in `int_books__unified` to resolve author name variants
+- [ ] Apply `manual_ratings` as fallback in `int_books__unified`
+- [ ] Exclude manga from `int_books__unified` (`WHERE category != 'Manga'`) (ADR-017)
+- [ ] Update `_intermediate__models.yml` and `_mart__models.yml`
+
+### Films refactoring (personal-warehouse)
+
+- [ ] Apply `genre_mapping` in `int_movies__unified` to normalise genres into French
+- [ ] Apply `manual_ratings` as fallback in `int_movies__unified`
+- [ ] Add `source` column to `mrt_movies__collection`
+- [ ] Exclude anime from `int_movies__unified` (ADR-017)
+- [ ] Update `_intermediate__models.yml` and `_mart__models.yml`
+
+### Music refactoring (personal-warehouse)
+
+- [ ] Add `media_format` column in `int_music__unified`
+      Rule: MusicBuddy → `cd`, Spotify → `digital`, Bandcamp → `digital` (ADR-021)
+- [ ] Handle format concatenation when an album appears in multiple sources
+      e.g. present in MusicBuddy AND Spotify → `media_format = 'cd, digital'`
+- [ ] Apply `genre_mapping` in `int_music__unified` to normalise and clean genres
+      (remove `& Country` and other Discogs export artefacts)
+- [ ] Apply `manual_ratings` as fallback in `int_music__unified`
+- [ ] Prepare vinyl slot in the intermediate (optional join — absent file = no-op)
+- [ ] Update `mrt_music__collection` to expose `media_format`
+- [ ] Update `_intermediate__models.yml` and `_mart__models.yml`
+
+---
+
+## dbt tests (personal-warehouse)
+
+Priority: **immediate** — set up before or alongside the refactoring.
+
+### Generic tests (in existing YAML files)
+
+- [ ] Verify `not_null` + `unique` are in place on all primary keys across all models
+- [ ] `accepted_values` on `domain` in `manual_ratings`: `['books', 'movies', 'music', 'manga', 'anime', 'series']`
+- [ ] `accepted_values` on `media_format` in `mrt_music__collection`:
+      `['cd', 'vinyl', 'digital', 'cd, digital', 'cd, vinyl', 'vinyl, digital', 'cd, vinyl, digital']`
+- [ ] `dbt_expectations.expect_column_values_to_be_between` on all `rating` fields: `min_value=0, max_value=5`
+- [ ] `relationships` tests between mart models and their intermediate references on primary keys
+
+### Singular tests (in `tests/`)
+
+- [ ] `tests/assert_no_duplicate_titles_per_domain.sql` — verifies no `(title, artist/author/director)`
+      duplicates exist in mart models after deduplication
+- [ ] `tests/assert_genre_mapping_coverage.sql` — verifies all raw genre values present in staging
+      are covered by `genre_mapping.csv` (or produces a list of unmapped values)
+- [ ] `tests/assert_manual_ratings_no_orphans.sql` — verifies every `manual_ratings` entry
+      corresponds to an existing item in the relevant mart
+
+### dbt tags
+
+- [ ] Tag all staging models with `tag: staging`, intermediate with `tag: intermediate`,
+      mart with `tag: mart` in YAML files (enables `dbt test --select tag:mart`)
+
+---
+
+## New source: Trakt (personal-warehouse)
+
+See ADR-018 and ADR-019.
+
+### Ingestion script
+
+- [ ] Create `scripts/trakt_to_bq.py` - Auth: API key (no OAuth required for public profiles; OAuth if profile is private) - Endpoints: watched movies, watched shows, ratings (movies + shows) - Output: `raw_personal.trakt_watched_movies`, `raw_personal.trakt_watched_shows`,
+      `raw_personal.trakt_ratings` - Pattern: full-refresh (same approach as `spotify_to_bq.py`)
+- [ ] Add Trakt vars (`TRAKT_API_KEY`, `TRAKT_USERNAME`) to `.env.example`
+- [ ] Update `requirements.txt`
+
+### Trakt staging (personal-warehouse)
+
+- [ ] `models/staging/trakt/stg_trakt__watched_movies.sql`
+- [ ] `models/staging/trakt/stg_trakt__watched_shows.sql`
+- [ ] `models/staging/trakt/stg_trakt__ratings.sql`
+- [ ] `models/staging/trakt/_trakt__sources.yml` — source declarations + column docs + tests
+- [ ] `models/staging/trakt/_trakt__docs.md` — docs blocks
+
+### Intermediate — update for Trakt
+
+- [ ] Update `int_movies__unified` to include Trakt as a third film source - Matching: `lower(trim(title)) + release_year` (consistent with existing pattern) - Rating priority: `COALESCE(trakt_rating, letterboxd_rating, moviebuddy_rating)` (ADR-019) - Add `source` column: `trakt`, `letterboxd`, `moviebuddy`, or combination
+- [ ] Create `int_anime__unified` — filtered Trakt shows + filtered MovieBuddy `TV Shows / Animation` - Rating priority: `COALESCE(trakt_rating, moviebuddy_rating)` (ADR-019)
+
+---
+
+## New source: Bandcamp (personal-warehouse)
+
+See ADR-018 and ADR-020.
+
+### Ingestion
+
+- [ ] Export `bandcamp-data-{date}.zip` from Settings > Data Export on bandcamp.com
+- [ ] Extract and place in `data/`: `bandcamp_collection.csv`, `bandcamp_wishlist.csv`
+- [ ] Load into BigQuery via `bq load` (update `scripts/bq_load.sh`)
+- [ ] Document actual Bandcamp export column names in `_csv__sources.yml`
+
+### Bandcamp staging (personal-warehouse)
+
+- [ ] `models/staging/csv/stg_csv__bandcamp_collection.sql`
+- [ ] `models/staging/csv/stg_csv__bandcamp_wishlist.sql`
+- [ ] Update `models/staging/csv/_csv__sources.yml` with new source declarations
+
+### Intermediate — update for Bandcamp
+
+- [ ] Update `int_music__unified` to include Bandcamp as a third music source - Matching: `lower(trim(title)) + lower(trim(artist))` - Deduplication: one row per album, `media_format` = concatenated formats (ADR-020) - Metadata priority: MusicBuddy > Bandcamp > Spotify (ADR-020)
+
+---
+
+## New domains: Manga and Anime (personal-warehouse)
+
+See ADR-017.
+
+### Seeds
+
+- [ ] Create `seeds/manga/author_countries.csv` — author → country mapping for manga
+- [ ] Create `seeds/anime/director_countries.csv` — director → country mapping for anime
+- [ ] Update `seeds/_seeds.yml`
+
+### Staging — no new models needed (data already in existing CSVs)
+
+- [ ] Document in `_csv__sources.yml` that `bookbuddy.category = 'Manga'` → manga domain
+- [ ] Document that `moviebuddy.content_type = 'TV Shows' AND genres LIKE '%Animation%'` → anime domain
+
+### Intermediate — new models
+
+- [ ] Create `models/intermediate/manga/int_manga__unified.sql` - Source: `stg_csv__bookbuddy` filtered on `category = 'Manga'` - Enrichment: country from `seeds/manga/author_countries.csv` - Genre normalisation via `genre_mapping`
+- [ ] Create `models/intermediate/anime/int_anime__unified.sql` - Source: `stg_csv__moviebuddy` filtered on `content_type = 'TV Shows' AND 'Animation' IN genres` + `stg_trakt__watched_shows` filtered on the same criterion - Rating priority: `COALESCE(trakt_rating, moviebuddy_rating)` (ADR-019) - Genre normalisation via `genre_mapping`
+- [ ] Create `models/intermediate/manga/_int_manga__models.yml`
+- [ ] Create `models/intermediate/anime/_int_anime__models.yml`
+- [ ] Create `models/intermediate/manga/_int_manga__docs.md`
+- [ ] Create `models/intermediate/anime/_int_anime__docs.md`
+
+### Mart — new models
+
+- [ ] Create `models/mart/manga/mrt_manga__collection.sql`
+- [ ] Create `models/mart/anime/mrt_anime__collection.sql`
+- [ ] Update `mrt_media__summary` to include manga and anime domain counts
+- [ ] Update `mrt_media__country_index` to include manga and anime rows
+- [ ] Create `models/mart/manga/_mart__models.yml` + `_mart__docs.md`
+- [ ] Create `models/mart/anime/_mart__models.yml` + `_mart__docs.md`
+
+---
+
+## Dashboard (personal-warehouse-dashboard)
+
+### Immediate fixes
+
+- [ ] **Films** — add `source` column to the Movies Collection page
+      (value from `mrt_movies__collection.source`)
+- [ ] **Sidebar** — translate to French: `Accueil`, `Livres`, `Films`, `Musique`
+      and all navigation labels
+- [ ] **Breadcrumb** — translate to French on all pages
+- [ ] **Logo** — replace the Evidence logo with the text `Médiathèque de Jeremy`
+      (via `evidence.config.yaml` → `title`, or in the layout Svelte component
+      depending on the Evidence version in use)
+
+### World map
+
+- [ ] Revise the AreaMap colour palette: - Ocean / map background: very light blue (e.g. `#E8F4FD`) - Countries with items: pink → dark red gradient scaled by item count
+      (e.g. `colorScale: ['#FADADD', '#C0392B']`) - Countries with no items: very light grey (e.g. `#F5F5F5`)
+
+### New domains
+
+- [ ] Create page `/manga/collection` — table + KPIs
+- [ ] Create page `/manga/stats` — genre, country, author charts
+- [ ] Create page `/anime/collection` — table + KPIs
+- [ ] Create page `/anime/stats` — genre, country, studio/director charts
+- [ ] Update sidebar to include `Manga` and `Animé`
+- [ ] Update `/summary` page to include manga and anime counters
+- [ ] Update `/map` page to include manga and anime domains
+
+### Music media format
+
+- [ ] Display `media_format` in the Music Collection page (column or badge)
+- [ ] Add a `media_format` filter (CD / Vinyl / Digital / All)
+- [ ] Add a media format breakdown chart in Music Stats
+
+---
+
+## Recommended execution order
+
+```
+1.  Normalisation seeds (genre_mapping, author_name_mapping, country_name_fr, manual_ratings)
+2.  dbt tests on existing models
+3.  Books refactoring (remove status, genre normalisation, author name variants)
+4.  Films refactoring (add source column, genre normalisation, rating priority)
+5.  Music refactoring (media_format, genre normalisation)
+6.  New source: Trakt (script + staging + intermediate update)
+7.  New source: Bandcamp (CSV export + staging + intermediate update)
+8.  New domains: manga + anime (intermediate + mart)
+9.  Dashboard — immediate fixes (sidebar, breadcrumb, logo, films source, map palette)
+10. Dashboard — new domains (manga + anime pages)
+11. Dashboard — music media format (filter + chart)
+12. Complementary dbt tests (singular tests + tags)
+```

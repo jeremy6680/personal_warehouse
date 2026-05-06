@@ -314,6 +314,7 @@ in this project is `__unified` (see `int_books__unified`, `int_movies__unified`)
   other source-only cases in the unified models
 
 **Matching strategy:**
+
 - Single pass: `lower(trim(artist))` + `lower(trim(title))`
 - Three-case output: `matched`, `musicbuddy_only`, `spotify_only`
 - For multi-artist Spotify albums, the full `artists` string is used as the match key — may miss
@@ -417,3 +418,308 @@ macOS launchd (09:30 daily)
 - Evidence's templating (SQL + Markdown) has a learning curve but is well-documented.
 - Netlify free tier has build minute limits (300 min/month) — a typical Evidence build
   takes under 2 minutes, so the daily rebuild uses ~60 min/month, well within limits.
+
+---
+
+## ADR-017 — New domains: manga and anime
+
+**Date:** 2026
+**Status:** Active
+
+**Context:** The collection contains manga (in BookBuddy, category `Manga`) and anime
+(in MovieBuddy, items with `content_type = 'TV Shows'` and `Animation` in their genres).
+Both domains have characteristics distinct enough from books and films to warrant
+separate domain treatment.
+
+**Decision:**
+
+- **Manga** are extracted from `stg_csv__bookbuddy` via a `category = 'Manga'` filter in
+  the intermediate layer. A new `int_manga__unified` model isolates them. The corresponding
+  mart is `mrt_manga__collection`.
+- **Anime** are extracted from `stg_csv__moviebuddy` (and `stg_trakt__*` when available)
+  via a `content_type = 'TV Shows' AND 'Animation' IN genres` filter. A new
+  `int_anime__unified` model isolates them. The corresponding mart is `mrt_anime__collection`.
+- Manga are **removed** from `int_books__unified` and anime are **removed** from
+  `int_movies__unified` to prevent domain mixing.
+
+**Rationale:**
+
+- Manga and novels are consumed and analysed differently (authorship patterns,
+  serialisation, volume counts).
+- Anime and Western films have different metadata structures and consumption patterns.
+- Seeds must be extended: `seeds/manga/author_countries.csv` and
+  `seeds/anime/director_countries.csv`.
+
+**Trade-offs:** Two new domains add two new staging → intermediate → mart branches to
+maintain. Accepted — the domain separation is cleaner and more scalable long-term.
+
+---
+
+## ADR-018 — New sources: Trakt (films, anime, series) and Bandcamp (music)
+
+**Date:** 2026
+**Status:** Active
+
+**Context:** Two new sources will enrich the warehouse:
+
+- **Trakt**: film, series and anime tracker. Has a public REST API + CSV exports.
+- **Bandcamp**: music platform. No public user API. Data accessible via the official
+  CSV export in account settings (Settings > Data Export), which produces a
+  `bandcamp-data-{date}.zip` containing `collection.csv` and `wishlist.csv`.
+
+**Decision:**
+
+### Trakt
+
+- Ingestion via the **Trakt API v2** (free tier, 1000 req/h rate limit) via a Python
+  script `scripts/trakt_to_bq.py` — same pattern as `spotify_to_bq.py`.
+- Relevant endpoints: `GET /users/{username}/watched/movies`,
+  `GET /users/{username}/watched/shows`, `GET /users/{username}/ratings/movies`,
+  `GET /users/{username}/ratings/shows`.
+- Raw tables in `raw_personal`: `trakt_watched_movies`, `trakt_watched_shows`,
+  `trakt_ratings`.
+- Staging: `models/staging/trakt/stg_trakt__watched_movies.sql`,
+  `stg_trakt__watched_shows.sql`, `stg_trakt__ratings.sql`.
+
+### Bandcamp
+
+- **No public user API** available (collection, wishlist data not exposed via API).
+- Official alternative: **CSV export** from Settings > Data Export on bandcamp.com.
+- Ingestion: manual CSV → `bq load` (same pattern as other CSV sources).
+- Files in `data/`: `bandcamp_collection.csv`, `bandcamp_wishlist.csv`.
+- Raw tables: `raw_personal.bandcamp_collection`, `raw_personal.bandcamp_wishlist`.
+- Staging: `models/staging/csv/stg_csv__bandcamp_collection.sql`,
+  `stg_csv__bandcamp_wishlist.sql`.
+
+**Note on scraping:** Scraping bandcamp.com is technically feasible but violates the
+Terms of Service and is fragile. The official export is preferred — stable, complete,
+and compliant.
+
+**Rationale:**
+
+- Trakt is preferred over Letterboxd for ratings (see ADR-019) and provides richer
+  API data with a stable, well-documented endpoint.
+- Bandcamp complements Spotify and MusicBuddy for purchased albums (digital and physical).
+- Consistent with the existing ingestion patterns: Python scripts for APIs,
+  `bq load` for CSV files.
+
+**Trade-offs:** Bandcamp requires a manual export (no automation possible without an API).
+Trakt requires an API key (simpler auth than Spotify — no PKCE flow needed).
+
+---
+
+## ADR-019 — Rating priority: Trakt > Letterboxd > MovieBuddy
+
+**Date:** 2026
+**Status:** Active
+
+**Context:** With Trakt added as a third source, up to three sources can provide a rating
+for the same film or series. A clear priority rule is needed.
+
+**Decision:** In `int_movies__unified` and `int_anime__unified`, the resolved rating is:
+
+```sql
+COALESCE(trakt_rating, letterboxd_rating, moviebuddy_rating) AS rating
+```
+
+**Rationale:**
+
+- Trakt is used as the primary, up-to-date tracker — its rating is the most recent
+  and intentional.
+- Letterboxd is a watch diary — its rating is valid but may be older.
+- MovieBuddy is a catalogue/wishlist — its rating is often absent for unwatched items.
+
+**Trade-offs:** A Trakt rating will override a Letterboxd rating even if the latter
+is more recent. Acceptable for this personal project.
+
+---
+
+## ADR-020 — Music deduplication: MusicBuddy + Spotify + Bandcamp
+
+**Date:** 2026
+**Status:** Active
+
+**Context:** Three music sources can contain the same album:
+
+- **MusicBuddy**: physical collection (CD) and Discogs wishlist.
+- **Spotify**: saved albums (digital).
+- **Bandcamp**: purchased digital albums and wishlist.
+
+**Decision:** Deduplication is handled in `int_music__unified` via
+`lower(trim(title)) + lower(trim(artist))` matching:
+
+- If an album appears in multiple sources, a single row is kept with a `media_format`
+  field (e.g. `'cd, digital'`) listing all detected formats.
+- Metadata priority: MusicBuddy (richer via Discogs) > Bandcamp > Spotify.
+- Rating priority: most recent non-null rating regardless of source.
+
+**Trade-offs:** Title + artist matching can produce false positives on same-name albums
+by different artists. Adding a Discogs ID or ISRC identifier would improve precision —
+deferred until duplicate issues are observed in practice.
+
+---
+
+## ADR-021 — Media format (`media_format`) per domain
+
+**Date:** 2026
+**Status:** Active
+
+**Context:** For music especially, the same album can exist in multiple formats
+(CD, vinyl, digital). The format origin of each item must be tracked.
+
+**Decision:**
+
+**Music:**
+| Source | Assigned format |
+|---|---|
+| MusicBuddy | `cd` |
+| Spotify | `digital` |
+| Bandcamp collection | `digital` |
+| `vinyls.csv` (future manual upload) | `vinyl` |
+
+If an album appears in multiple sources → `media_format` = concatenated formats,
+e.g. `'cd, digital'`.
+
+**Books:** Not applicable for now (all physical in current collection). Can be extended
+later with `ebook` / `print` / `audiobook` formats.
+
+**Films / Anime:** Not applicable (streaming context only).
+
+**Implementation:** `media_format` column added in `int_music__unified` and exposed in
+`mrt_music__collection`. The future seed `seeds/music/vinyls.csv` will be joined in
+the intermediate layer as soon as it exists — its absence is a no-op.
+
+---
+
+## ADR-022 — Genre normalisation via mapping seed
+
+**Date:** 2026
+**Status:** Active
+
+**Context:** Genre values vary across sources:
+
+- Films: `Comedy` vs `Comédie`, `Sci-Fi` vs `Science Fiction`
+- Books: `Biography` vs `Biography & Autobiography`
+- Music: parasitic genres such as `& Country` (Discogs export artefacts)
+
+**Decision:** Create a seed `seeds/shared/genre_mapping.csv` (columns: `domain`,
+`raw_genre`, `normalized_genre`) mapping each raw value to a normalised French label.
+
+Parasitic genres (empty strings, `& Country`, etc.) are mapped to `null` and filtered out.
+
+Normalisation is applied in the **intermediate layer**:
+
+- `int_books__unified` for books
+- `int_movies__unified` + `int_anime__unified` for films and anime
+- `int_music__unified` for music
+- `int_manga__unified` for manga
+
+**Rationale:**
+
+- Centralises normalisation logic in a single auditable file.
+- Easily extensible: adding a row to the CSV is sufficient.
+- No logic in staging (respects layer boundaries).
+
+**Trade-offs:** Manual maintenance of the mapping. Unknown genres pass through unchanged
+and trigger a `dbt_expectations.expect_column_values_to_be_in_set` test alert.
+
+---
+
+## ADR-023 — Author name normalisation via mapping seed
+
+**Date:** 2026
+**Status:** Active
+
+**Context:** Author name variants exist across sources — e.g. `Hubert Selby` vs
+`Hubert Selby Jr.`.
+
+**Decision:** Create a seed `seeds/shared/author_name_mapping.csv` (columns:
+`raw_name`, `canonical_name`) mapping variants to a canonical name.
+Normalisation is applied in `int_books__unified` before cross-source matching.
+
+**Rationale:**
+
+- Prevents duplicate author entries in the mart layer.
+- Manually maintainable and easily extensible.
+
+**Trade-offs:** Requires periodic review of the seed as new authors are added.
+
+---
+
+## ADR-024 — Manual ratings via CSV seed (`manual_ratings.csv`)
+
+**Date:** 2026
+**Status:** Active
+
+**Context:** Some items have no rating from any source but deserve a personal rating.
+Two options evaluated:
+
+1. CSV seed `manual_ratings.csv` → fallback join in the intermediate layer.
+2. Frontend interface (Supabase form or custom app writing to BigQuery).
+
+**Decision:** Option 1 — seed `seeds/shared/manual_ratings.csv` with columns:
+`domain` (`books` | `movies` | `music` | `manga` | `anime` | `series`), `title`,
+`author_or_director_or_artist`, `rating` (0–5), `rated_at` (ISO date).
+
+In each intermediate model, the manual rating is used as a last-resort fallback:
+
+```sql
+COALESCE(source_rating, manual_rating) AS rating
+```
+
+**Rationale:**
+
+- Simple, Git-versioned, auditable, and consistent with the "seeds for static reference"
+  pattern already established in this project.
+- No external dependency (no Supabase, no interface to maintain).
+- Upgradable: if the list grows, migrate to a Supabase table with a lightweight interface —
+  the intermediate models only need their `ref()` updated.
+
+**Trade-offs:** Manual CSV editing (no GUI). Acceptable for a personal project with
+a low volume of manual ratings.
+
+---
+
+## ADR-025 — Remove read/unread status from books
+
+**Date:** 2026
+**Status:** Active
+
+**Context:** The `status = 'Read'` / `status = 'Unread'` distinction in
+`mrt_books__collection` was used to filter read books. In practice, all books in the
+collection are read (unread books are not entered).
+
+**Decision:** Remove the `status` column from `mrt_books__collection` and from
+`mrt_books__reading_history`. The `WHERE status = 'Read'` filter in
+`mrt_books__reading_history` is dropped — all items are treated as read.
+
+**Rationale:**
+
+- Simplifies the mart layer and the dashboard.
+- More accurately reflects the actual collection.
+
+**Trade-offs:** If unread books are added in the future, the field must be
+reintroduced. The decision is fully reversible.
+
+---
+
+## ADR-026 — French labels for genres, countries and content types in the warehouse
+
+**Date:** 2026
+**Status:** Active
+
+**Context:** Genres, countries and content types appeared in the marts in English
+(from CSV exports and the Spotify API). The dashboard is fully in French — the
+inconsistency was visible in filters and charts.
+
+**Decision:** French translation is applied in the **intermediate layer** via mapping
+seeds (`genre_mapping.csv` for genres, and a new seed `seeds/shared/country_name_fr.csv`
+for country names). Mart models expose French values directly.
+
+**Rationale:**
+
+- Single source of truth for all translations (seeds).
+- The dashboard requires no client-side translation logic.
+
+**Trade-offs:** Mapping seeds must be exhaustive. Unmapped values pass through in
+English and trigger a `dbt_expectations.expect_column_values_to_be_in_set` test alert.
