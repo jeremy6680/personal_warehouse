@@ -6,6 +6,7 @@
 --              (read for books, watched for movies; null for music which has no
 --              consumption tracking), rated item counts, average unified rating,
 --              and country coverage.
+--              Note: all books in the collection are considered read (ADR-025).
 -- Dependencies: mrt_books__collection, mrt_movies__collection, mrt_music__collection
 -- Adapter note: COUNTIF is BigQuery-specific. For DuckDB/PostgreSQL replace with
 --               SUM(CASE WHEN <condition> THEN 1 ELSE 0 END).
@@ -34,10 +35,11 @@ books_summary AS (
     SELECT
         'books'                              AS domain,
         COUNT(*)                             AS total_items,
-        COUNTIF(is_read)                     AS items_consumed,
-        COUNTIF(NOT is_read)                 AS items_pending,
+        -- All books in the collection are read (ADR-025)
+        COUNT(*)                             AS items_consumed,
+        CAST(0 AS INT64)                     AS items_pending,
         COUNTIF(is_rated)                    AS items_rated,
-        ROUND(AVG(rating), 2)               AS avg_rating,
+        ROUND(AVG(rating), 2)                AS avg_rating,
         COUNTIF(country IS NOT NULL)         AS items_with_country
     FROM books
 ),
@@ -49,7 +51,7 @@ movies_summary AS (
         COUNTIF(is_watched)                  AS items_consumed,
         COUNTIF(NOT is_watched)              AS items_pending,
         COUNTIF(is_rated)                    AS items_rated,
-        ROUND(AVG(rating), 2)               AS avg_rating,
+        ROUND(AVG(rating), 2)                AS avg_rating,
         COUNTIF(country IS NOT NULL)         AS items_with_country
     FROM movies
 ),
@@ -61,7 +63,7 @@ music_summary AS (
         CAST(NULL AS INT64)                  AS items_consumed,
         CAST(NULL AS INT64)                  AS items_pending,
         COUNTIF(is_rated)                    AS items_rated,
-        ROUND(AVG(rating), 2)               AS avg_rating,
+        ROUND(AVG(rating), 2)                AS avg_rating,
         COUNTIF(country IS NOT NULL)         AS items_with_country
     FROM music
 ),
