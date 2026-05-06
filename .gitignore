@@ -13,4 +13,4 @@ logs/
 .env
 .spotify_cache
 
-data/
+data/.claude/
