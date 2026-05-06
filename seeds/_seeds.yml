@@ -112,7 +112,52 @@ seeds:
           - unique
           - not_null
       - name: iso_alpha3
-        description: ISO 3166-1 alpha-3 three-letter country code (e.g., "USA", "KOR"). Used as the join key for the Evidence AreaMap GeoJSON basemap.
+        description: >
+          ISO 3166-1 alpha-3 three-letter country code (e.g., "USA", "KOR").
+          Used as the join key for the Evidence AreaMap GeoJSON basemap.
         tests:
           - unique
           - not_null
+
+  - name: genre_mapping
+    description: >
+      Cross-domain mapping of raw genre values (as exported by BookBuddy, MovieBuddy,
+      and MusicBuddy) to normalised French labels. Centralises all genre normalisation
+      logic in a single auditable seed — no genre logic lives in staging or mart.
+      Normalisation is applied in the intermediate layer: int_books__unified,
+      int_movies__unified, int_music__unified (and future int_manga__unified,
+      int_anime__unified).
+      Rows with an empty normalized_genre are parasitic values (export artefacts,
+      metadata tags, overly specific subjects) that are filtered out in the
+      intermediate layer via WHERE normalized_genre IS NOT NULL.
+      See ADR-022 for the full rationale.
+    config:
+      tags: ["seeds", "shared", "reference"]
+    columns:
+      - name: domain
+        description: >
+          Source domain the raw genre belongs to. One of: books, movies, music.
+          Future values: manga, anime.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["books", "movies", "music", "manga", "anime"]
+      - name: raw_genre
+        description: >
+          Genre value exactly as it appears in the source CSV export
+          (BookBuddy genre column, MovieBuddy genres column after SPLIT,
+          MusicBuddy genres column after SPLIT). Case-sensitive — the join
+          in intermediate normalizes both sides with lower/trim.
+        tests:
+          - not_null
+      - name: normalized_genre
+        description: >
+          Normalised French genre label exposed in the mart layer and dashboard.
+          Empty string means the raw value is a parasitic tag to be filtered out
+          (e.g. "In library", "& Country", "TV Movie", "Non-Music").
+          NULL and empty string are treated equivalently in the intermediate filter.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - domain
+            - raw_genre

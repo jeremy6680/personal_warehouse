@@ -173,14 +173,15 @@ These tasks impact existing models and must be addressed first.
 
 ### Normalisation seeds (personal-warehouse)
 
-- [ ] Create `seeds/shared/genre_mapping.csv` — `(domain, raw_genre, normalized_genre)` mapping
+- [x] Create `seeds/shared/genre_mapping.csv` — `(domain, raw_genre, normalized_genre)` mapping
       Covers: films, books, music, manga, anime (ADR-022)
 - [ ] Create `seeds/shared/author_name_mapping.csv` — `(raw_name, canonical_name)` mapping
       Known cases: `Hubert Selby` → `Hubert Selby Jr.` (ADR-023)
 - [ ] Create `seeds/shared/country_name_fr.csv` — `(country_en, country_fr)` mapping
       Exposes French country names in mart models (ADR-026)
 - [ ] Create `seeds/shared/manual_ratings.csv` — `(domain, title, author_or_director_or_artist, rating, rated_at)` (ADR-024)
-- [ ] Update `seeds/_seeds.yml` with documentation for all new seeds
+- [x] Update `seeds/_seeds.yml` with documentation for all new seeds
+      Note: only genre_mapping added for now — remaining seeds documented when created
 
 ### Books refactoring (personal-warehouse)
 
