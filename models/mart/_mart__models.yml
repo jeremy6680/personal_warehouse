@@ -1,15 +1,15 @@
 version: 2
 
 models:
-
   # ── Books ─────────────────────────────────────────────────────────────────
 
   - name: mrt_books__collection
     description: >
-      Full book collection — all statuses (Read, Unread, Reading, Did Not Finish).
-      Single unified rating: Goodreads is the source of truth when both sources
-      have a rating, otherwise BookBuddy rating is used. rating is null for
-      unrated books. source indicates which app(s) contributed the row.
+      Full book collection. Single unified rating: Goodreads is the source of
+      truth when both sources have a rating, otherwise BookBuddy rating is used.
+      rating is null for unrated books. genre is the normalised French label from
+      the genre_mapping seed (ADR-022). status removed per ADR-025.
+      source indicates which app(s) contributed the row.
     config:
       materialized: table
       tags: ["mart", "books"]
@@ -26,18 +26,12 @@ models:
       - name: author
         description: Primary author name.
       - name: genre
-        description: Genre from BookBuddy. Null for Goodreads-only rows.
+        description: >
+          Normalised French genre label from the genre_mapping seed (ADR-022).
+          Null for Goodreads-only rows, or when the raw BookBuddy genre is a
+          parasitic tag (e.g. "In library", "Internet Archive Wishlist").
       - name: category
         description: User-defined category from BookBuddy. Null for Goodreads-only rows.
-      - name: status
-        description: Reading status from BookBuddy. Null for Goodreads-only rows.
-        tests:
-          - accepted_values:
-              values: ["Read", "Unread", "Reading", "Did Not Finish"]
-              config:
-                where: "status IS NOT NULL"
-      - name: is_read
-        description: True if status = 'Read'.
       - name: rating
         description: >
           Unified personal rating on a 1–5 scale. Goodreads rating is used when

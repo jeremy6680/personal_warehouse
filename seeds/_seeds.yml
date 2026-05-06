@@ -161,3 +161,23 @@ seeds:
           combination_of_columns:
             - domain
             - raw_genre
+  - name: author_name_mapping
+    description: >
+      Manual mapping of author name variants to their canonical form.
+      Applied in int_books__unified before cross-source matching to prevent
+      duplicate author entries caused by inconsistent naming between BookBuddy
+      and Goodreads (ADR-023).
+      Join key is lower(trim(raw_name)) — must match the author field in staging
+      exactly (case-insensitive).
+    config:
+      tags: ["seeds", "shared", "reference"]
+    columns:
+      - name: raw_name
+        description: Author name variant as it appears in the source export.
+        tests:
+          - unique
+          - not_null
+      - name: canonical_name
+        description: Canonical author name to use in the unified model (e.g., "Hubert Selby Jr.").
+        tests:
+          - not_null

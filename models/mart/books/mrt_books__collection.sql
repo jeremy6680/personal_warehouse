@@ -1,10 +1,11 @@
 -- ============================================================
 -- Model: mrt_books__collection
 -- Layer: Mart
--- Description: Full book collection — all statuses (read, unread, reading, DNF).
---              Single unified rating: Goodreads is the source of truth when both
---              sources have a rating, otherwise BookBuddy rating is used.
---              source indicates which app(s) contributed the row.
+-- Description: Full book collection. Single unified rating: Goodreads
+--              is the source of truth when both sources have a rating,
+--              otherwise BookBuddy rating is used. rating is null for
+--              unrated books. genre is the normalised French label from
+--              genre_mapping (ADR-022). status column removed (ADR-025).
 -- Dependencies: int_books__unified
 -- Adapter note: Standard SQL — works on BigQuery, DuckDB, and PostgreSQL.
 -- ============================================================
@@ -25,10 +26,10 @@ collection AS (
         book_id,
         title,
         author,
+        -- genre is already normalised in int_books__unified (ADR-022)
+        -- null = parasitic tag filtered out, or Goodreads-only row
         genre,
         category,
-        status,
-        CASE WHEN status = 'Read' THEN TRUE ELSE FALSE END          AS is_read,
         -- Goodreads is source of truth for rating; fall back to BookBuddy (0 = unrated)
         COALESCE(
             CAST(goodreads_rating AS FLOAT64),

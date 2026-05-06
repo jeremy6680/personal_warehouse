@@ -6,6 +6,9 @@ models:
       Full union of BookBuddy and Goodreads, deduplicated to one row per book.
       Three cases: matched (both sources), bookbuddy_only, goodreads_only.
       Matching is attempted first on ISBN, then on normalized title + author.
+      Author names are normalised via the author_name_mapping seed before
+      cross-source matching (ADR-023).
+      Genre is normalised via the genre_mapping seed to French labels (ADR-022).
       The book_id is always a title+author surrogate so it is consistent
       regardless of which source(s) a book comes from.
       country is joined from the author_countries seed on normalized author name.
@@ -27,11 +30,18 @@ models:
       - name: author
         description: Primary author name. Sourced from BookBuddy when present, otherwise from Goodreads.
       - name: genre
-        description: Genre from BookBuddy. Null for Goodreads-only rows.
+        description: >
+          Normalised French genre label from the genre_mapping seed (ADR-022).
+          Null for Goodreads-only rows, or when the raw BookBuddy genre is a
+          parasitic tag (e.g. "In library", "Internet Archive Wishlist").
       - name: category
         description: User-defined category from BookBuddy. Null for Goodreads-only rows.
       - name: status
-        description: Reading status from BookBuddy (Read, Unread, Reading, Did Not Finish). Null for Goodreads-only rows.
+        description: >
+          Reading status from BookBuddy (Read, Unread, Reading, Did Not Finish).
+          Null for Goodreads-only rows.
+          Note: in practice all books in the collection are read — status is
+          retained here for completeness but removed from mart models (ADR-025).
       - name: rating
         description: Personal rating from BookBuddy on a 0–5 scale. Null for Goodreads-only rows.
       - name: isbn
@@ -50,7 +60,7 @@ models:
         description: >
           Cross-source join strategy.
           'isbn' — matched on ISBN.
-          'title_author' — matched on normalized title + author.
+          'title_author' — matched on normalized title + normalized author.
           null — book found in only one source (no cross-source match).
       - name: country
         description: >
