@@ -181,3 +181,87 @@ seeds:
         description: Canonical author name to use in the unified model (e.g., "Hubert Selby Jr.").
         tests:
           - not_null
+- name: country_name_fr
+    description: >
+      Full world country list mapping English country names (as used across all
+      domain seeds and mart models) to their official French labels.
+      Applied in the intermediate layer via a LEFT JOIN on lower(trim(country))
+      to expose French country names in mart models and the dashboard.
+      Unmapped values pass through in English — add a row here to fix them.
+    config:
+      tags: ["seeds", "shared", "reference"]
+    columns:
+      - name: country_en
+        description: >
+          Country name in English, matching the values used in author_countries,
+          director_countries, artist_countries, and film_countries seeds.
+          Join key — must be case-insensitively unique.
+        tests:
+          - unique
+          - not_null
+      - name: country_fr
+        description: >
+          Official French name of the country (e.g. États-Unis, Royaume-Uni,
+          Corée du Sud). Used as the display value in mart models and the dashboard.
+        tests:
+          - not_null
+- name: manual_ratings
+    description: >
+      Manually curated personal ratings for items that carry no rating in any
+      source export. Used as a last-resort fallback in each intermediate model
+      via COALESCE(source_rating, manual_rating) AS rating.
+      Covers all media domains: books, movies, music, manga, anime, series.
+      The join key is lower(trim(title)) + lower(trim(author_or_director_or_artist))
+      within the relevant domain — entries must match the item's title and
+      creator name exactly (case-insensitive) as they appear in the intermediate
+      model after any author_name_mapping normalisation has been applied.
+    config:
+      tags: ["seeds", "shared", "reference"]
+      column_types:
+        rating: FLOAT64
+        rated_at: DATE
+    columns:
+      - name: domain
+        description: >
+          Media domain the item belongs to.
+          One of: books, movies, music, manga, anime, series.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["books", "movies", "music", "manga", "anime", "series"]
+      - name: title
+        description: >
+          Title of the item, matching the title as it appears in the relevant
+          intermediate model (case-insensitive). Part of the composite join key.
+        tests:
+          - not_null
+      - name: author_or_director_or_artist
+        description: >
+          Creator name — author for books/manga, director for movies/anime,
+          artist for music. Matches the creator field in the intermediate model
+          after author_name_mapping normalisation (case-insensitive).
+          Part of the composite join key.
+        tests:
+          - not_null
+      - name: rating
+        description: >
+          Personal rating on a 0–5 scale (decimals allowed, e.g. 3.5).
+          Used as a fallback only — never overrides a rating already present
+          in the source export.
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 5
+      - name: rated_at
+        description: >
+          ISO 8601 date on which the manual rating was assigned (YYYY-MM-DD).
+          Informational only — not used in any join logic.
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - domain
+            - title
+            - author_or_director_or_artist
