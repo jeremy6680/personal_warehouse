@@ -1,7 +1,10 @@
+# models/intermediate/_intermediate__models.yml
+# Documentation: models/intermediate/_intermediate__docs.md
+
 version: 2
 
 models:
-- name: int_books__unified
+  - name: int_books__unified
     description: >
       Full union of BookBuddy and Goodreads, deduplicated to one row per book.
       Three cases: matched (both sources), bookbuddy_only, goodreads_only.
@@ -21,12 +24,12 @@ models:
           Surrogate key derived from title + author (same formula as BookBuddy).
           For Goodreads-only rows the key is generated from the Goodreads title
           and author, ensuring uniqueness across the full union.
-        tests:
+        data_tests:
           - unique
           - not_null
       - name: title
         description: Book title. Sourced from BookBuddy when present, otherwise from Goodreads.
-        tests:
+        data_tests:
           - not_null
       - name: author
         description: >
@@ -71,7 +74,7 @@ models:
           from author_countries if no French translation exists. Null if the author
           has no entry in author_countries.
 
-- name: int_movies__unified
+  - name: int_movies__unified
     description: >
       Full union of MovieBuddy and Letterboxd, deduplicated to one row per film.
       Three cases: matched (both sources), moviebuddy_only, letterboxd_only.
@@ -94,12 +97,12 @@ models:
         description: >
           Surrogate key derived from title + release_year (same formula as MovieBuddy).
           For Letterboxd-only rows the key is generated from film_name + release_year.
-        tests:
+        data_tests:
           - unique
           - not_null
       - name: title
         description: Film title. From MovieBuddy when present, otherwise from Letterboxd.
-        tests:
+        data_tests:
           - not_null
       - name: content_type
         description: >
@@ -147,7 +150,7 @@ models:
           primary director. For letterboxd_only rows: joined from film_countries on
           (title, release_year). Null if no matching entry exists in either seed.
 
-- name: int_music__unified
+  - name: int_music__unified
     description: >
       Full union of MusicBuddy and Spotify saved albums, deduplicated to one
       row per album. Three cases: matched (both sources), musicbuddy_only,
@@ -170,12 +173,12 @@ models:
           Surrogate key. For MusicBuddy rows: derived from title + artist +
           discogs_release_id (carried from staging). For Spotify-only rows:
           derived from album_name + artists.
-        tests:
+        data_tests:
           - unique
           - not_null
       - name: title
         description: Album or release title.
-        tests:
+        data_tests:
           - not_null
       - name: artist
         description: >
@@ -183,7 +186,7 @@ models:
           includes Discogs disambiguation suffix (e.g. "Ayo (2)"). Used as
           the join key and for surrogate key stability. Use artist_display
           for reporting.
-        tests:
+        data_tests:
           - not_null
       - name: artist_display
         description: >
@@ -226,10 +229,11 @@ models:
           'musicbuddy' — album only in MusicBuddy.
           'spotify' — album only in Spotify saved albums.
           'both' — matched across both sources.
-        tests:
+        data_tests:
           - not_null
           - accepted_values:
-              values: ["musicbuddy", "spotify", "both"]
+              arguments:
+                values: ["musicbuddy", "spotify", "both"]
       - name: match_type
         description: >
           Cross-source join strategy.
@@ -241,7 +245,8 @@ models:
           'cd' — present in MusicBuddy only.
           'digital' — present in Spotify only.
           'cd, digital' — matched across both sources.
-        tests:
+        data_tests:
           - not_null
           - accepted_values:
-              values: ["cd", "digital", "cd, digital"]
+              arguments:
+                values: ["cd", "digital", "cd, digital"]

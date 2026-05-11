@@ -19,7 +19,7 @@ source AS (
 
 renamed AS (
     SELECT
-        artist_id,
+        CAST(artist_id AS STRING)  AS artist_id,
         name                                AS artist_name,
         genres,
         SAFE_CAST(popularity AS INT64)      AS popularity,
