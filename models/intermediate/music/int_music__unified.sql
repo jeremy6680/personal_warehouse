@@ -87,7 +87,8 @@ musicbuddy_keyed AS (
         *,
         REGEXP_REPLACE(artist, r' \(\d+\)$', '')  AS artist_display,
         lower(trim(title))                         AS title_key,
-        lower(trim(artist))                        AS artist_key
+        lower(trim(artist))                        AS artist_key,
+        lower(trim(REGEXP_REPLACE(artist, r' \(\d+\)$', ''))) AS artist_display_key
     FROM musicbuddy
 ),
 
@@ -159,7 +160,7 @@ title_artist_matches AS (
     FROM musicbuddy_keyed mb
     INNER JOIN spotify_enriched sp
         ON  mb.title_key  = sp.title_key
-        AND mb.artist_key = sp.artist_key
+        AND mb.artist_display_key = sp.artist_key
 ),
 
 -- Case 1: album present in both sources
@@ -185,11 +186,11 @@ matched AS (
     INNER JOIN musicbuddy_keyed  mb  ON m.mb_album_id     = mb.album_id
     INNER JOIN spotify_enriched  sp  ON m.sp_surrogate_id = sp.surrogate_id
     LEFT JOIN musicbuddy_genres_normalised mgn ON mb.album_id    = mgn.album_id
-    LEFT JOIN artist_countries   ac  ON mb.artist_key     = ac.artist_key
+    LEFT JOIN artist_countries   ac  ON mb.artist_display_key = ac.artist_key
     LEFT JOIN country_name_fr    cnf ON lower(trim(ac.country))  = cnf.country_key
     LEFT JOIN manual_ratings     mr
         ON  mb.title_key  = mr.title_key
-        AND mb.artist_key = mr.creator_key
+        AND mb.artist_display_key = mr.creator_key
 ),
 
 -- Case 2: album in MusicBuddy only
@@ -214,11 +215,11 @@ musicbuddy_only AS (
     FROM musicbuddy_keyed mb
     LEFT JOIN title_artist_matches        m ON mb.album_id   = m.mb_album_id
     LEFT JOIN musicbuddy_genres_normalised mgn ON mb.album_id = mgn.album_id
-    LEFT JOIN artist_countries           ac ON mb.artist_key = ac.artist_key
+    LEFT JOIN artist_countries           ac ON mb.artist_display_key = ac.artist_key
     LEFT JOIN country_name_fr           cnf ON lower(trim(ac.country)) = cnf.country_key
     LEFT JOIN manual_ratings             mr
         ON  mb.title_key  = mr.title_key
-        AND mb.artist_key = mr.creator_key
+        AND mb.artist_display_key = mr.creator_key
     WHERE m.mb_album_id IS NULL
 ),
 
@@ -261,6 +262,41 @@ combined AS (
     SELECT * FROM musicbuddy_only
     UNION ALL
     SELECT * FROM spotify_only
+),
+
+deduplicated AS (
+    SELECT
+        *,
+        row_number() OVER (
+            PARTITION BY lower(trim(title)), lower(trim(artist_display))
+            ORDER BY
+                CASE source_name
+                    WHEN 'both' THEN 0
+                    WHEN 'musicbuddy' THEN 1
+                    ELSE 2
+                END,
+                CASE WHEN spotify_album_id IS NOT NULL THEN 0 ELSE 1 END,
+                CASE WHEN discogs_release_id IS NOT NULL THEN 0 ELSE 1 END,
+                album_id
+        ) AS dedupe_rank
+    FROM combined
 )
 
-SELECT * FROM combined
+SELECT
+    album_id,
+    title,
+    artist,
+    artist_display,
+    genres,
+    release_year,
+    discogs_release_id,
+    spotify_album_id,
+    total_tracks,
+    spotify_added_at,
+    rating,
+    country,
+    source_name,
+    match_type,
+    media_format
+FROM deduplicated
+WHERE dedupe_rank = 1

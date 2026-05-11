@@ -222,25 +222,25 @@ Priority: **immediate** — set up before or alongside the refactoring.
 
 ### Generic tests (in existing YAML files)
 
-- [ ] Verify `not_null` + `unique` are in place on all primary keys across all models
-- [ ] `accepted_values` on `domain` in `manual_ratings`: `['books', 'movies', 'music', 'manga', 'anime', 'series']`
-- [ ] `accepted_values` on `media_format` in `mrt_music__collection`:
+- [x] Verify `not_null` + `unique` are in place on all primary keys across all models
+- [x] `accepted_values` on `domain` in `manual_ratings`
+- [x] `accepted_values` on `media_format` in `mrt_music__collection`:
       `['cd', 'vinyl', 'digital', 'cd, digital', 'cd, vinyl', 'vinyl, digital', 'cd, vinyl, digital']`
-- [ ] `dbt_expectations.expect_column_values_to_be_between` on all `rating` fields: `min_value=0, max_value=5`
-- [ ] `relationships` tests between mart models and their intermediate references on primary keys
+- [x] `dbt_expectations.expect_column_values_to_be_between` on all `rating` fields: `min_value=0, max_value=5`
+- [x] `relationships` tests between mart models and their intermediate references on primary keys
 
 ### Singular tests (in `tests/`)
 
-- [ ] `tests/assert_no_duplicate_titles_per_domain.sql` — verifies no `(title, artist/author/director)`
+- [x] `tests/assert_no_duplicate_titles_per_domain.sql` — verifies no `(title, artist/author/director)`
       duplicates exist in mart models after deduplication
-- [ ] `tests/assert_genre_mapping_coverage.sql` — verifies all raw genre values present in staging
+- [x] `tests/assert_genre_mapping_coverage.sql` — verifies all raw genre values present in staging
       are covered by `genre_mapping.csv` (or produces a list of unmapped values)
-- [ ] `tests/assert_manual_ratings_no_orphans.sql` — verifies every `manual_ratings` entry
+- [x] `tests/assert_manual_ratings_no_orphans.sql` — verifies every `manual_ratings` entry
       corresponds to an existing item in the relevant mart
 
 ### dbt tags
 
-- [ ] Tag all staging models with `tag: staging`, intermediate with `tag: intermediate`,
+- [x] Tag all staging models with `tag: staging`, intermediate with `tag: intermediate`,
       mart with `tag: mart` in YAML files (enables `dbt test --select tag:mart`)
 
 ---
