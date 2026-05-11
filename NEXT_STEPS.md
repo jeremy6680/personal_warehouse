@@ -175,44 +175,44 @@ These tasks impact existing models and must be addressed first.
 
 - [x] Create `seeds/shared/genre_mapping.csv` — `(domain, raw_genre, normalized_genre)` mapping
       Covers: films, books, music, manga, anime (ADR-022)
-- [ ] Create `seeds/shared/author_name_mapping.csv` — `(raw_name, canonical_name)` mapping
+- [x] Create `seeds/shared/author_name_mapping.csv` — `(raw_name, canonical_name)` mapping
       Known cases: `Hubert Selby` → `Hubert Selby Jr.` (ADR-023)
-- [ ] Create `seeds/shared/country_name_fr.csv` — `(country_en, country_fr)` mapping
+- [x] Create `seeds/shared/country_name_fr.csv` — `(country_en, country_fr)` mapping
       Exposes French country names in mart models (ADR-026)
-- [ ] Create `seeds/shared/manual_ratings.csv` — `(domain, title, author_or_director_or_artist, rating, rated_at)` (ADR-024)
+- [x] Create `seeds/shared/manual_ratings.csv` — `(domain, title, author_or_director_or_artist, rating, rated_at)` (ADR-024)
 - [x] Update `seeds/_seeds.yml` with documentation for all new seeds
       Note: only genre_mapping added for now — remaining seeds documented when created
 
 ### Books refactoring (personal-warehouse)
 
-- [ ] Remove `status` column from `mrt_books__collection` (ADR-025)
-- [ ] Remove `WHERE status = 'Read'` filter from `mrt_books__reading_history` (ADR-025)
-- [ ] Apply `genre_mapping` in `int_books__unified` to normalise genres into French
-- [ ] Apply `author_name_mapping` in `int_books__unified` to resolve author name variants
-- [ ] Apply `manual_ratings` as fallback in `int_books__unified`
-- [ ] Exclude manga from `int_books__unified` (`WHERE category != 'Manga'`) (ADR-017)
-- [ ] Update `_intermediate__models.yml` and `_mart__models.yml`
+- [x] Apply `genre_mapping` in `int_books__unified`
+- [x] Apply `author_name_mapping` in `int_books__unified`
+- [x] Apply `manual_ratings` in `int_books__unified`
+- [x] Apply `country_name_fr` in `int_books__unified`
+- [x] Exclude manga from `int_books__unified`
+- [x] Update `_intermediate__models.yml` for `int_books__unified`
+- [x] Confirm `status` removed from `mrt_books__collection` downstream
+- [x] Update `_mart__models.yml` for books models
 
-### Films refactoring (personal-warehouse)
+### Films refactoring ✅
 
-- [ ] Apply `genre_mapping` in `int_movies__unified` to normalise genres into French
-- [ ] Apply `manual_ratings` as fallback in `int_movies__unified`
-- [ ] Add `source` column to `mrt_movies__collection`
-- [ ] Exclude anime from `int_movies__unified` (ADR-017)
-- [ ] Update `_intermediate__models.yml` and `_mart__models.yml`
+- [x] Apply `genre_mapping` in `int_movies__unified`
+- [x] Apply `manual_ratings` in `int_movies__unified`
+- [x] Apply `country_name_fr` in `int_movies__unified`
+- [x] Exclude anime from `int_movies__unified`
+- [x] Update `_intermediate__models.yml`
+- [x] Add `source` column to `mrt_movies__collection`
+- [x] Update `_mart__models.yml` for movies models
 
-### Music refactoring (personal-warehouse)
+### Music refactoring ✅
 
-- [ ] Add `media_format` column in `int_music__unified`
-      Rule: MusicBuddy → `cd`, Spotify → `digital`, Bandcamp → `digital` (ADR-021)
-- [ ] Handle format concatenation when an album appears in multiple sources
-      e.g. present in MusicBuddy AND Spotify → `media_format = 'cd, digital'`
-- [ ] Apply `genre_mapping` in `int_music__unified` to normalise and clean genres
-      (remove `& Country` and other Discogs export artefacts)
-- [ ] Apply `manual_ratings` as fallback in `int_music__unified`
-- [ ] Prepare vinyl slot in the intermediate (optional join — absent file = no-op)
-- [ ] Update `mrt_music__collection` to expose `media_format`
-- [ ] Update `_intermediate__models.yml` and `_mart__models.yml`
+- [x] Apply `genre_mapping` in `int_music__unified`
+- [x] Apply `manual_ratings` in `int_music__unified`
+- [x] Apply `country_name_fr` in `int_music__unified`
+- [x] Add `media_format` in `int_music__unified`
+- [x] Update `_intermediate__models.yml`
+- [x] Expose `media_format` in `mrt_music__collection`
+- [x] Update `_mart__models.yml`
 
 ---
 

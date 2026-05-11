@@ -1,17 +1,18 @@
 version: 2
 
 models:
-  - name: int_books__unified
+- name: int_books__unified
     description: >
       Full union of BookBuddy and Goodreads, deduplicated to one row per book.
       Three cases: matched (both sources), bookbuddy_only, goodreads_only.
       Matching is attempted first on ISBN, then on normalized title + author.
-      Author names are normalised via the author_name_mapping seed before
-      cross-source matching (ADR-023).
-      Genre is normalised via the genre_mapping seed to French labels (ADR-022).
+      Author name variants are resolved before matching via the author_name_mapping
+      seed (ADR-023). Manga are excluded — they flow into int_manga__unified (ADR-017).
+      Genre is normalised to French via the genre_mapping seed (ADR-022).
+      Manual ratings are applied as a last-resort fallback (ADR-024).
+      Country name is translated to French via the country_name_fr seed (ADR-026).
       The book_id is always a title+author surrogate so it is consistent
       regardless of which source(s) a book comes from.
-      country is joined from the author_countries seed on normalized author name.
     config:
       tags: ["intermediate", "books"]
     columns:
@@ -28,22 +29,23 @@ models:
         tests:
           - not_null
       - name: author
-        description: Primary author name. Sourced from BookBuddy when present, otherwise from Goodreads.
+        description: >
+          Primary author name. Sourced from BookBuddy when present, otherwise from Goodreads.
+          Raw value from the source — canonical form is resolved internally via
+          author_name_mapping but the display value here is the original source string.
       - name: genre
         description: >
           Normalised French genre label from the genre_mapping seed (ADR-022).
-          Null for Goodreads-only rows, or when the raw BookBuddy genre is a
-          parasitic tag (e.g. "In library", "Internet Archive Wishlist").
+          Null for Goodreads-only rows or if the raw genre has no mapping entry.
       - name: category
-        description: User-defined category from BookBuddy. Null for Goodreads-only rows.
-      - name: status
         description: >
-          Reading status from BookBuddy (Read, Unread, Reading, Did Not Finish).
-          Null for Goodreads-only rows.
-          Note: in practice all books in the collection are read — status is
-          retained here for completeness but removed from mart models (ADR-025).
+          User-defined category from BookBuddy (e.g. Roman, Essai).
+          Null for Goodreads-only rows. Manga rows are excluded from this model.
       - name: rating
-        description: Personal rating from BookBuddy on a 0–5 scale. Null for Goodreads-only rows.
+        description: >
+          Personal rating on a 0–5 scale. Sourced from BookBuddy when available;
+          falls back to manual_ratings seed if the source rating is null (ADR-024).
+          Null if neither source nor manual rating exists.
       - name: isbn
         description: ISBN from BookBuddy, or from Goodreads for Goodreads-only rows.
       - name: tags
@@ -58,16 +60,18 @@ models:
         description: Personal Goodreads rating (1–5 scale). Null for BookBuddy-only rows or if unrated.
       - name: match_type
         description: >
-          Cross-source join strategy.
+          Cross-source join strategy used to deduplicate this row.
           'isbn' — matched on ISBN.
-          'title_author' — matched on normalized title + normalized author.
+          'title_author' — matched on normalized title + author (post name-normalisation).
           null — book found in only one source (no cross-source match).
       - name: country
         description: >
-          Country of origin or nationality of the author, joined from the
-          author_countries seed. Null if the author has no entry in the seed.
+          Country of origin or nationality of the author, translated to French
+          via the country_name_fr seed (ADR-026). Falls back to the English value
+          from author_countries if no French translation exists. Null if the author
+          has no entry in author_countries.
 
-  - name: int_movies__unified
+- name: int_movies__unified
     description: >
       Full union of MovieBuddy and Letterboxd, deduplicated to one row per film.
       Three cases: matched (both sources), moviebuddy_only, letterboxd_only.
@@ -75,9 +79,14 @@ models:
       of the same film are collapsed to one row. Matching is on normalized title
       + release_year. The movie_id is always a title+release_year surrogate so
       it is consistent regardless of which source(s) a film comes from.
-      country uses a two-tier lookup: director_countries seed on the primary director
-      for matched and moviebuddy_only rows; film_countries seed on (title, release_year)
-      for letterboxd_only rows, which carry no director data.
+      Anime excluded — handled in int_anime__unified (ADR-017).
+      Genres are normalised to French via the genre_mapping seed (ADR-022),
+      applied per-token on the comma-separated genres string.
+      Manual ratings applied as last-resort fallback (ADR-024).
+      Country name translated to French via the country_name_fr seed (ADR-026).
+      country uses a two-tier lookup: director_countries seed on the primary
+      director for matched and moviebuddy_only rows; film_countries seed on
+      (title, release_year) for letterboxd_only rows, which carry no director data.
     config:
       tags: ["intermediate", "movies"]
     columns:
@@ -93,15 +102,24 @@ models:
         tests:
           - not_null
       - name: content_type
-        description: Media type from MovieBuddy (Movie or TV Show). Null for Letterboxd-only rows.
+        description: >
+          Media type from MovieBuddy (Movie or TV Show). Null for Letterboxd-only rows.
+          Anime TV Shows are excluded from this model — see int_anime__unified.
       - name: release_year
         description: Release year. Sourced from whichever source has the record.
       - name: rating
-        description: Personal rating from MovieBuddy on a 0–5 scale. Null for Letterboxd-only rows.
+        description: >
+          Personal rating on a 0–5 scale. Sourced from MovieBuddy when available;
+          falls back to manual_ratings seed if the source rating is null (ADR-024).
+          Null if neither source nor manual rating exists.
+          Letterboxd rating is preserved separately in letterboxd_rating.
       - name: directors
         description: Comma-separated director names from MovieBuddy. Null for Letterboxd-only rows.
       - name: genres
-        description: Comma-separated genres from MovieBuddy. Null for Letterboxd-only rows.
+        description: >
+          Normalised French genre labels from the genre_mapping seed (ADR-022),
+          re-aggregated as a comma-separated string. Parasitic or unmapped tokens
+          are dropped. Null for Letterboxd-only rows, which carry no genre data.
       - name: runtime_minutes
         description: Runtime in minutes from MovieBuddy. Null for Letterboxd-only rows.
       - name: tmdb_id
@@ -123,27 +141,35 @@ models:
           null — film found in only one source (no cross-source match).
       - name: country
         description: >
-          Country of origin for the film. For matched and moviebuddy_only rows: joined
-          from director_countries on the primary director. For letterboxd_only rows:
-          joined from film_countries on (title, release_year). Null if no matching
-          entry exists in either seed.
+          Country of origin for the film, translated to French via the country_name_fr
+          seed (ADR-026). Falls back to the English value if no French translation exists.
+          For matched and moviebuddy_only rows: joined from director_countries on the
+          primary director. For letterboxd_only rows: joined from film_countries on
+          (title, release_year). Null if no matching entry exists in either seed.
 
-  - name: int_music__unified
+- name: int_music__unified
     description: >
-      Full union of MusicBuddy and Spotify saved albums, deduplicated to one row per album.
-      Three output cases: matched (in both), musicbuddy_only, spotify_only.
-      Matching is on normalized artist + title (single pass).
-      Spotify album genres are almost always empty ([]) — enriched via a LEFT JOIN on
-      stg_spotify__followed_artists using the primary artist Spotify ID.
-      country is joined from the artist_countries seed on normalized artist name.
+      Full union of MusicBuddy and Spotify saved albums, deduplicated to one
+      row per album. Three cases: matched (both sources), musicbuddy_only,
+      spotify_only. Matching is on normalized artist + title (single pass).
+      Spotify album genres are enriched via a LEFT JOIN on followed_artists
+      using the primary artist Spotify ID — album-level genres are almost
+      always empty in the Spotify API.
+      Genre normalised to French via the genre_mapping seed (ADR-022):
+      comma-separated string for MusicBuddy rows, JSON array for Spotify rows.
+      media_format tracks physical/digital origin per source (ADR-021):
+      MusicBuddy → 'cd', Spotify → 'digital', both → 'cd, digital'.
+      Manual ratings applied as last-resort fallback (ADR-024).
+      Country name translated to French via the country_name_fr seed (ADR-026).
       artist_display strips Discogs disambiguation suffixes for MusicBuddy rows.
     config:
       tags: ["intermediate", "music"]
     columns:
       - name: album_id
         description: >
-          Primary key. For MusicBuddy rows: surrogate key from title + artist + discogs_release_id.
-          For Spotify-only rows: surrogate key from album_name + artists.
+          Surrogate key. For MusicBuddy rows: derived from title + artist +
+          discogs_release_id (carried from staging). For Spotify-only rows:
+          derived from album_name + artists.
         tests:
           - unique
           - not_null
@@ -153,18 +179,28 @@ models:
           - not_null
       - name: artist
         description: >
-          Raw artist name. For MusicBuddy rows: includes Discogs disambiguation suffix.
-          For Spotify rows: comma-separated artists string as returned by the API.
+          Raw artist name as it appears in the source. For MusicBuddy rows,
+          includes Discogs disambiguation suffix (e.g. "Ayo (2)"). Used as
+          the join key and for surrogate key stability. Use artist_display
+          for reporting.
         tests:
           - not_null
       - name: artist_display
-        description: Artist name with Discogs disambiguation suffix stripped. For Spotify-only rows, same as artist.
+        description: >
+          Artist name with Discogs disambiguation suffix stripped
+          (e.g. "Ayo (2)" → "Ayo"). For Spotify-only rows, identical to artist.
+          Use this column for display and reporting.
       - name: genres
         description: >
-          Genres string. Comma-separated for MusicBuddy rows; JSON array for Spotify-only rows
-          (enriched from stg_spotify__followed_artists — album genres are almost always empty in the Spotify API).
+          Normalised French genre labels from the genre_mapping seed (ADR-022),
+          re-aggregated as a comma-separated string. Parasitic or unmapped tokens
+          are dropped. For MusicBuddy rows: derived from the comma-separated genres
+          string. For Spotify rows: derived from the JSON array genres on the
+          followed artist. Null if no mapped genres exist.
       - name: release_year
-        description: Release year. Extracted from Spotify release_date string for Spotify rows.
+        description: >
+          Release year. For Spotify rows: extracted from the variable-precision
+          release_date string (YYYY, YYYY-MM, or YYYY-MM-DD).
       - name: discogs_release_id
         description: Discogs release identifier. Null for Spotify-only rows.
       - name: spotify_album_id
@@ -174,10 +210,38 @@ models:
       - name: spotify_added_at
         description: Timestamp when the album was saved to the Spotify library. Null for MusicBuddy-only rows.
       - name: rating
-        description: Personal rating on a 0–5 scale. 0 means unrated. Null for Spotify-only rows.
+        description: >
+          Personal rating on a 0–5 scale. Sourced from MusicBuddy when available;
+          falls back to manual_ratings seed if the source rating is null (ADR-024).
+          Null for Spotify-only rows unless a manual rating exists.
       - name: country
-        description: Country of the artist from the artist_countries seed. Null if not in seed.
+        description: >
+          Country of origin or nationality of the artist, translated to French
+          via the country_name_fr seed (ADR-026). Falls back to the English value
+          from artist_countries if no French translation exists. Null if the artist
+          has no entry in artist_countries.
       - name: source_name
-        description: Data origin — 'musicbuddy', 'spotify', or 'both'.
+        description: >
+          Data origin.
+          'musicbuddy' — album only in MusicBuddy.
+          'spotify' — album only in Spotify saved albums.
+          'both' — matched across both sources.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["musicbuddy", "spotify", "both"]
       - name: match_type
-        description: Match strategy used — 'title_artist' for matched rows, null otherwise.
+        description: >
+          Cross-source join strategy.
+          'title_artist' — matched on normalized title + artist.
+          null — album found in only one source.
+      - name: media_format
+        description: >
+          Physical or digital format of the album, derived from source origin (ADR-021).
+          'cd' — present in MusicBuddy only.
+          'digital' — present in Spotify only.
+          'cd, digital' — matched across both sources.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["cd", "digital", "cd, digital"]

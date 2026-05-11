@@ -8,6 +8,7 @@
 --              rating is null for unrated albums (MusicBuddy uses 0 for unrated;
 --              Spotify carries no personal rating).
 --              source_name: 'musicbuddy' | 'spotify' | 'both'
+--              media_format: 'cd' | 'digital' | 'cd, digital' (ADR-021)
 -- Dependencies: int_music__unified
 -- Adapter note: Standard SQL — works on BigQuery, DuckDB, and PostgreSQL.
 -- ============================================================
@@ -36,7 +37,8 @@ collection AS (
         spotify_added_at,
         NULLIF(rating, 0)               AS rating,
         country,
-        source_name
+        source_name,
+        media_format
     FROM source_data
 ),
 

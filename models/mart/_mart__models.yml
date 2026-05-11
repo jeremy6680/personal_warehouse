@@ -48,7 +48,10 @@ models:
       - name: tags
         description: Comma-separated user tags from BookBuddy. Null for Goodreads-only rows.
       - name: country
-        description: Country of the author, joined from the author_countries seed. Null if not in seed.
+        description: >
+          Country of the author in French, translated via the country_name_fr seed
+          (ADR-026). Falls back to the English value from author_countries if no
+          French translation exists. Null if the author has no entry in author_countries.
       - name: source
         description: >
           Which app(s) contributed this row.
@@ -107,7 +110,10 @@ models:
       - name: directors
         description: Comma-separated director names from MovieBuddy. Null for Letterboxd-only rows.
       - name: genres
-        description: Comma-separated genres from MovieBuddy. Null for Letterboxd-only rows.
+        description: >
+          Normalised French genre labels from the genre_mapping seed (ADR-022),
+          comma-separated. Parasitic or unmapped tokens are dropped.
+          Null for Letterboxd-only rows, which carry no genre data from MovieBuddy.
       - name: runtime_minutes
         description: Runtime in minutes from MovieBuddy. Null for Letterboxd-only rows.
       - name: tmdb_id
@@ -116,9 +122,11 @@ models:
         description: Letterboxd URI from the most recent diary entry. Null for unwatched items.
       - name: country
         description: >
-          Country of the primary director from the director_countries seed. Populated
-          for MovieBuddy and matched rows only. Letterboxd-only rows have no director
-          data — enrich via a film_countries seed or TMDB API to cover these.
+          Country of the primary director in French, translated via the country_name_fr
+          seed (ADR-026). Falls back to the English value if no French translation exists.
+          Populated for MovieBuddy and matched rows via director_countries; for
+          Letterboxd-only rows via film_countries on (title, release_year).
+          Null if no matching entry exists in either seed.
       - name: source
         description: >
           Which app(s) contributed this row.
@@ -159,8 +167,10 @@ models:
           - not_null
       - name: genres
         description: >
-          Genres string. Comma-separated for MusicBuddy rows; JSON array for Spotify-only rows
-          (enriched from followed artists — album genres are almost always empty in the Spotify API).
+          Normalised French genre labels from the genre_mapping seed (ADR-022),
+          comma-separated. For MusicBuddy rows: derived from the Discogs genres
+          string. For Spotify rows: derived from followed artist genres.
+          Null if no mapped genres exist.
       - name: release_year
         description: Release year. Extracted from Spotify release_date string for Spotify rows.
       - name: discogs_release_id
@@ -176,12 +186,26 @@ models:
       - name: is_rated
         description: True if rating is not null.
       - name: country
-        description: Country of the artist from the artist_countries seed. Null if not in seed.
+        description: >
+          Country of the artist in French, translated via the country_name_fr
+          seed (ADR-026). Falls back to the English value from artist_countries
+          if no French translation exists. Null if the artist has no entry in
+          artist_countries.
       - name: source_name
         description: Data origin — 'musicbuddy', 'spotify', or 'both'.
         tests:
           - accepted_values:
               values: ["musicbuddy", "spotify", "both"]
+      - name: media_format
+        description: >
+          Physical or digital format of the album, derived from source origin (ADR-021).
+          'cd' — present in MusicBuddy only.
+          'digital' — present in Spotify only.
+          'cd, digital' — matched across both sources.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["cd", "digital", "cd, digital"]
 
   # ── Cross-domain ──────────────────────────────────────────────────────────
 
@@ -197,7 +221,10 @@ models:
       tags: ["mart", "cross_domain"]
     columns:
       - name: country
-        description: Country name from the author/director/artist seed.
+        description: >
+          Country name in French, translated via the country_name_fr seed (ADR-026).
+          Falls back to the English value from the domain seed (author_countries,
+          director_countries, or artist_countries) if no French translation exists.
         tests:
           - not_null
       - name: domain
