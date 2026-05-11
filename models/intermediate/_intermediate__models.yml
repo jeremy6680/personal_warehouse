@@ -49,6 +49,11 @@ models:
           Personal rating on a 0–5 scale. Sourced from BookBuddy when available;
           falls back to manual_ratings seed if the source rating is null (ADR-024).
           Null if neither source nor manual rating exists.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
       - name: isbn
         description: ISBN from BookBuddy, or from Goodreads for Goodreads-only rows.
       - name: tags
@@ -116,6 +121,11 @@ models:
           falls back to manual_ratings seed if the source rating is null (ADR-024).
           Null if neither source nor manual rating exists.
           Letterboxd rating is preserved separately in letterboxd_rating.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
       - name: directors
         description: Comma-separated director names from MovieBuddy. Null for Letterboxd-only rows.
       - name: genres
@@ -217,6 +227,11 @@ models:
           Personal rating on a 0–5 scale. Sourced from MusicBuddy when available;
           falls back to manual_ratings seed if the source rating is null (ADR-024).
           Null for Spotify-only rows unless a manual rating exists.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
       - name: country
         description: >
           Country of origin or nationality of the artist, translated to French
@@ -249,4 +264,11 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: ["cd", "digital", "cd, digital"]
+                values:
+                  - "cd"
+                  - "vinyl"
+                  - "digital"
+                  - "cd, digital"
+                  - "cd, vinyl"
+                  - "vinyl, digital"
+                  - "cd, vinyl, digital"

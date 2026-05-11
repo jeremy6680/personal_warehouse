@@ -237,6 +237,37 @@ combined AS (
     SELECT * FROM bookbuddy_only
     UNION ALL
     SELECT * FROM goodreads_only
+),
+
+deduplicated AS (
+    SELECT
+        *,
+        row_number() OVER (
+            PARTITION BY lower(trim(title)), lower(trim(author))
+            ORDER BY
+                CASE WHEN match_type IS NOT NULL THEN 0 ELSE 1 END,
+                CASE WHEN goodreads_id IS NOT NULL THEN 0 ELSE 1 END,
+                CASE WHEN isbn IS NOT NULL THEN 0 ELSE 1 END,
+                CASE WHEN rating IS NOT NULL THEN 0 ELSE 1 END,
+                book_id
+        ) AS dedupe_rank
+    FROM combined
 )
 
-SELECT * FROM combined
+SELECT
+    book_id,
+    title,
+    author,
+    genre,
+    category,
+    rating,
+    isbn,
+    tags,
+    goodreads_id,
+    year_published,
+    publisher,
+    goodreads_rating,
+    match_type,
+    country
+FROM deduplicated
+WHERE dedupe_rank = 1

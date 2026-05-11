@@ -2,6 +2,7 @@ domain,raw_genre,normalized_genre
 books,Fiction,Fiction
 books,Fiction & Literature,Fiction
 books,Science fiction English,Science-Fiction
+books,"Science fiction, English",Science-Fiction
 books,Biography & Autobiography,Biographie
 books,Biography,Biographie
 books,Travel,Voyage
@@ -49,9 +50,11 @@ books,Young men,
 books,Japanese,
 books,Kabul (Afghanistan),
 books,Caulfield Holden (Fictitious character),
+books,"Caulfield, Holden (Fictitious character)",
 books,Balkan Peninsula,
 books,Belgians,
 books,Authors French,
+books,"Authors, French",
 books,Astronauts,
 movies,Drama,Drame
 movies,Drame,Drame

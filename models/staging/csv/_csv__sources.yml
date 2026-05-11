@@ -45,8 +45,13 @@ models:
         description: Publisher name.
       - name: isbn
         description: ISBN, with Excel ="..." encoding stripped.
-      - name: my_rating
+      - name: rating
         description: Personal rating on a 1–5 scale. 0 means unrated.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
       - name: source_name
         description: Hardcoded source identifier — always 'goodreads'.
 
@@ -80,6 +85,11 @@ models:
                 values: ["Read", "Unread", "Reading", "Did Not Finish"]
       - name: rating
         description: Personal rating on a 0–5 scale. 0 means unrated.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
       - name: isbn
         description: ISBN. Null if not set.
       - name: tags
@@ -111,6 +121,11 @@ models:
         description: Short URI to the Letterboxd film page.
       - name: rating
         description: Personal rating on a 0.5–5 scale (half-star increments). Null if unrated.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
 
   - name: stg_csv__moviebuddy
     description: >
@@ -138,6 +153,11 @@ models:
         description: Release year of the movie or TV show.
       - name: rating
         description: Personal rating on a 0–5 scale. 0 means unrated.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
       - name: directors
         description: Comma-separated director names. Null if not set.
       - name: genres
@@ -175,3 +195,8 @@ models:
         description: Discogs release identifier. Null if not matched.
       - name: rating
         description: Personal rating on a 0–5 scale. 0 means unrated.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5

@@ -18,6 +18,10 @@ models:
         data_tests:
           - unique
           - not_null
+          - relationships:
+              arguments:
+                to: ref('int_books__unified')
+                field: book_id
       - name: title
         description: Book title.
         data_tests:
@@ -36,6 +40,11 @@ models:
           Unified personal rating on a 1–5 scale. Goodreads rating is used when
           available; otherwise BookBuddy rating is used. Null if the book is unrated
           in both sources.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
       - name: is_rated
         description: True if rating is not null.
       - name: year_published
@@ -80,6 +89,10 @@ models:
         data_tests:
           - unique
           - not_null
+          - relationships:
+              arguments:
+                to: ref('int_movies__unified')
+                field: movie_id
       - name: title
         description: Film or show title.
         data_tests:
@@ -105,6 +118,11 @@ models:
           Unified personal rating on a 0.5–5 scale. Letterboxd rating is used when
           available; otherwise MovieBuddy rating is used. Null if the item is unrated
           in both sources.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
       - name: is_rated
         description: True if rating is not null.
       - name: directors
@@ -158,6 +176,10 @@ models:
         data_tests:
           - unique
           - not_null
+          - relationships:
+              arguments:
+                to: ref('int_music__unified')
+                field: album_id
       - name: title
         description: Album or release title.
         data_tests:
@@ -184,6 +206,11 @@ models:
         description: Timestamp when the album was saved to the Spotify library. Null for MusicBuddy-only rows.
       - name: rating
         description: Personal rating on a 0–5 scale. Null for unrated or Spotify-only albums.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
       - name: is_rated
         description: True if rating is not null.
       - name: country
@@ -208,7 +235,14 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: ["cd", "digital", "cd, digital"]
+                values:
+                  - "cd"
+                  - "vinyl"
+                  - "digital"
+                  - "cd, digital"
+                  - "cd, vinyl"
+                  - "vinyl, digital"
+                  - "cd, vinyl, digital"
 
   # ── Cross-domain ──────────────────────────────────────────────────────────
 
@@ -254,6 +288,11 @@ models:
                 values: ["author", "director", "artist"]
       - name: rating
         description: Unified personal rating (null if unrated). Same scale as the domain mart.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
     data_tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
