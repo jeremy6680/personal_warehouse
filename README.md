@@ -31,8 +31,9 @@ The end goal is a unified, queryable history of books read, movies watched, and 
 | `moviebuddy` | MovieBuddy | CSV → `bq load` | Full movie/TV collection (watched + wishlist) |
 | `musicbuddy` | MusicBuddy | CSV → `bq load` | Music album collection via Discogs |
 | `spotify` | Spotify | API → `scripts/spotify_to_bq.py` | Saved albums, saved tracks, followed artists |
+| `bandcamp` | Bandcamp | Internal API → `scripts/bandcamp_to_bq.py` | Collection and wishlist albums |
 
-CSV exports live in `data/` and are loaded into BigQuery via `bq load`. Spotify data is fetched via the Spotify Web API using `scripts/spotify_to_bq.py`.
+CSV exports live in `data/` and are loaded into BigQuery via `bq load`. Spotify and Bandcamp data are fetched with Python ingestion scripts.
 
 ---
 

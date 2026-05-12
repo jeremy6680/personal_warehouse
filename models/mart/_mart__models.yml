@@ -170,18 +170,18 @@ models:
 
   - name: mrt_music__collection
     description: >
-      Full album collection from MusicBuddy and Spotify, enriched with country.
-      One row per album across both sources. artist is the display name with Discogs
-      disambiguation suffix stripped for MusicBuddy rows; raw artists string for
-      Spotify-only rows. rating is null for unrated albums (MusicBuddy stores 0 for
-      unrated; Spotify carries no personal rating).
+      Full music library from listened/liked sources: MusicBuddy, Bandcamp
+      collection/wishlist, and Spotify, enriched with country. One row per album
+      across sources. artist is the display name with Discogs disambiguation
+      suffix stripped for MusicBuddy rows; raw artists string for Bandcamp/
+      Bandcamp/Spotify-only rows. rating is null for unrated albums.
     config:
       tags: ["mart", "music"]
     columns:
       - name: album_id
         description: >
           Surrogate key. For MusicBuddy rows: derived from title + artist + discogs_release_id.
-          For Spotify-only rows: derived from album_name + artists.
+          For Bandcamp/Spotify-only rows: derived from title + artist.
         data_tests:
           - unique
           - not_null
@@ -206,15 +206,26 @@ models:
       - name: release_year
         description: Release year. Extracted from Spotify release_date string for Spotify rows.
       - name: discogs_release_id
-        description: Discogs release identifier. Null for Spotify-only rows.
+        description: Discogs release identifier. Null for rows not present in MusicBuddy.
       - name: spotify_album_id
         description: Spotify native album identifier. Null for MusicBuddy-only rows.
       - name: total_tracks
         description: Total number of tracks on the album, from Spotify. Null for MusicBuddy-only rows.
       - name: spotify_added_at
         description: Timestamp when the album was saved to the Spotify library. Null for MusicBuddy-only rows.
+      - name: bandcamp_item_id
+        description: Bandcamp item identifier. Null for rows not present in the Bandcamp collection.
+      - name: bandcamp_item_url
+        description: Bandcamp item URL. Null for rows not present in the Bandcamp collection.
+      - name: bandcamp_added_at
+        description: Source timestamp-like field returned by Bandcamp. Null for rows not present in the Bandcamp collection.
+      - name: bandcamp_origin
+        description: >
+          Bandcamp origin for this album: collection, wishlist, or collection, wishlist.
+          Wishlist is included because adding an album there means it was listened to
+          and liked.
       - name: rating
-        description: Personal rating on a 0–5 scale. Null for unrated or Spotify-only albums.
+        description: Personal rating on a 0–5 scale. Null for unrated or Bandcamp/Spotify-only albums.
         data_tests:
           - dbt_expectations.expect_column_values_to_be_between:
               arguments:
@@ -229,17 +240,26 @@ models:
           if no French translation exists. Null if the artist has no entry in
           artist_countries.
       - name: source_name
-        description: Data origin — 'musicbuddy', 'spotify', or 'both'.
+        description: Data origin or source combination.
         data_tests:
           - accepted_values:
               arguments:
-                values: ["musicbuddy", "spotify", "both"]
+                values:
+                  [
+                    "musicbuddy_and_bandcamp_and_spotify",
+                    "musicbuddy_and_bandcamp",
+                    "musicbuddy_and_spotify",
+                    "bandcamp_and_spotify",
+                    "musicbuddy",
+                    "bandcamp",
+                    "spotify"
+                  ]
       - name: media_format
         description: >
           Physical or digital format of the album, derived from source origin (ADR-021).
           'cd' — present in MusicBuddy only.
-          'digital' — present in Spotify only.
-          'cd, digital' — matched across both sources.
+          'digital' — present in Bandcamp and/or Spotify only.
+          'cd, digital' — matched across physical and digital sources.
         data_tests:
           - not_null
           - accepted_values:

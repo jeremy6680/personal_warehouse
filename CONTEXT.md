@@ -62,18 +62,19 @@ It also serves as a **portfolio project** demonstrating dbt analytics engineerin
 ### Phase 2 — Intermediate ✅ Complete
 - `int_books__unified` — merges Goodreads reading history with BookBuddy collection metadata; three-case union (matched / bookbuddy_only / goodreads_only); ISBN-first matching with title+author fallback; country enrichment via `author_countries` seed
 - `int_movies__unified` — merges MovieBuddy collection with Letterboxd diary; Letterboxd rewatches aggregated to one row per film; three-case union; title+year matching; country enrichment via `director_countries` seed
-- `int_music__unified` — merges MusicBuddy with Spotify saved albums; three-case union (matched / musicbuddy_only / spotify_only); title+artist matching; Spotify album genres enriched via followed artists join; country enrichment via `artist_countries` seed
+- `int_music__unified` — merges MusicBuddy, Bandcamp collection/wishlist, and Spotify saved albums; title+artist matching; Spotify album genres enriched via followed artists join; country enrichment via `artist_countries` seed
 
 ### Phase 3 — Mart ✅ Complete
 - `mrt_books__collection` — full book collection (read + unread) with metadata, country, ratings from both sources
 - `mrt_movies__collection` — full movie/TV collection (watched + wishlist) with metadata
-- `mrt_music__collection` — full album collection across MusicBuddy and Spotify, with source_name, country, ratings
+- `mrt_music__collection` — listened/liked album library across MusicBuddy, Bandcamp, and Spotify, with source_name, country, ratings
 - `mrt_media__summary` — cross-domain aggregate: item counts, avg ratings, monthly pace per domain
 - `mrt_media__country_index` — cross-domain country spine: one row per (country, domain, item) across books, movies, and music
 
 ### Phase 4 — Spotify API ingestion ✅ Complete
 - `scripts/spotify_to_bq.py` — fetches saved albums, saved tracks, followed artists; full-refresh to BigQuery
-- Three staging models for Spotify data; integrated into `int_music__unified` and `mrt_music__collection`
+- `scripts/bandcamp_to_bq.py` — fetches Bandcamp collection and wishlist; full-refresh to BigQuery
+- Spotify and Bandcamp staging models are integrated into `int_music__unified` and `mrt_music__collection`
 
 ### Phase 5 — Evidence.dev dashboard ✅ Complete
 - Static site built with Evidence.dev, deployed on Netlify at **https://mediatheque.jeremymarchandeau.com**
