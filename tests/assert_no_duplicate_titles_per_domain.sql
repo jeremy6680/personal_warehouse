@@ -26,6 +26,26 @@ WITH mart_items AS (
         title,
         artist AS creator
     FROM {{ ref('mrt_music__collection') }}
+
+    UNION ALL
+
+    SELECT
+        'manga' AS domain,
+        lower(trim(title)) AS title_key,
+        lower(trim(author)) AS creator_key,
+        title,
+        author AS creator
+    FROM {{ ref('mrt_manga__collection') }}
+
+    UNION ALL
+
+    SELECT
+        'anime' AS domain,
+        lower(trim(title)) AS title_key,
+        lower(trim(SPLIT(directors, ',')[SAFE_OFFSET(0)])) AS creator_key,
+        title,
+        SPLIT(directors, ',')[SAFE_OFFSET(0)] AS creator
+    FROM {{ ref('mrt_anime__collection') }}
 ),
 
 duplicates AS (

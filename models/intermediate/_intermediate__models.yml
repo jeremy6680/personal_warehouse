@@ -190,7 +190,8 @@ models:
     description: >
       Anime union from MovieBuddy animated TV shows and Trakt watched or rated
       shows. Matching is on normalized title + release_year. Rating priority is
-      Trakt > MovieBuddy > manual fallback.
+      Trakt > MovieBuddy > manual fallback. Country is sourced from
+      anime_director_countries when available, then Trakt country.
     config:
       tags: ["intermediate", "anime"]
     columns:
@@ -222,6 +223,10 @@ models:
         description: Normalised French genre labels from the genre_mapping seed.
       - name: runtime_minutes
         description: Runtime in minutes from MovieBuddy or Trakt.
+      - name: directors
+        description: Comma-separated director names from MovieBuddy.
+      - name: tmdb_id
+        description: TMDB identifier from MovieBuddy or Trakt.
       - name: first_watched_date
         description: First known Trakt watched date at show level.
       - name: last_watched_date
@@ -248,7 +253,59 @@ models:
       - name: match_type
         description: "'title_year' when Trakt and MovieBuddy matched; null otherwise."
       - name: country
-        description: Country from Trakt, translated to French when a mapping exists.
+        description: >
+          Country translated to French when possible. Source priority:
+          anime_director_countries on primary MovieBuddy director, then Trakt country.
+
+  - name: int_manga__unified
+    description: >
+      Manga collection from BookBuddy rows where category = 'Manga'. Genre is
+      normalised via genre_mapping with domain = 'manga'. Manual ratings are
+      applied as a fallback, and country is enriched from manga_author_countries.
+    config:
+      tags: ["intermediate", "manga"]
+    columns:
+      - name: manga_id
+        description: Surrogate key inherited from the BookBuddy staging row.
+        data_tests:
+          - unique
+          - not_null
+      - name: title
+        description: Manga title.
+        data_tests:
+          - not_null
+      - name: author
+        description: Manga author.
+      - name: genre
+        description: Normalised French genre label from the genre_mapping seed.
+      - name: category
+        description: BookBuddy category, expected to be Manga.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Manga"]
+      - name: rating
+        description: Personal rating on a 0–5 scale.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
+      - name: isbn
+        description: ISBN from BookBuddy.
+      - name: tags
+        description: Comma-separated user tags from BookBuddy.
+      - name: country
+        description: >
+          Country of the author, translated to French via country_name_fr when
+          a mapping exists.
+      - name: source
+        description: Source app that contributed the row.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["bookbuddy"]
 
   - name: int_music__unified
     description: >

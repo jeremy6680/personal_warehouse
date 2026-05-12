@@ -5,8 +5,8 @@
 --              or rated shows. Matching is on normalized title + release_year.
 --              Rating priority follows ADR-019: Trakt > MovieBuddy > manual.
 -- Dependencies: stg_csv__moviebuddy, stg_trakt__watched_shows,
---               stg_trakt__ratings, genre_mapping, manual_ratings,
---               country_name_fr
+--               stg_trakt__ratings, anime_director_countries,
+--               genre_mapping, manual_ratings, country_name_fr
 -- Adapter note: BigQuery-focused SQL (SAFE_CAST, SAFE_OFFSET, JSON functions).
 -- ============================================================
 
@@ -31,6 +31,13 @@ genre_mapping AS (
         normalized_genre
     FROM {{ ref('genre_mapping') }}
     WHERE domain = 'movies'
+),
+
+anime_director_countries AS (
+    SELECT
+        lower(trim(director)) AS director_key,
+        country
+    FROM {{ ref('anime_director_countries') }}
 ),
 
 manual_ratings AS (
@@ -201,15 +208,19 @@ combined AS (
         CASE
             WHEN has_trakt AND has_moviebuddy THEN 'title_year'
         END                                           AS match_type,
-        COALESCE(cnf.country_fr, trakt_country)        AS country
+        COALESCE(cnf_director.country_fr, cnf_trakt.country_fr, adc.country, trakt_country) AS country
     FROM title_year_unified tyu
     LEFT JOIN moviebuddy_genres_normalised mgn
         ON tyu.moviebuddy_movie_id = mgn.movie_id
     LEFT JOIN trakt_genres_normalised tgn
         ON  tyu.title_key    = tgn.title_key
         AND tyu.release_year = tgn.release_year
-    LEFT JOIN country_name_fr cnf
-        ON lower(trim(tyu.trakt_country)) = cnf.country_key
+    LEFT JOIN anime_director_countries adc
+        ON lower(trim(SPLIT(tyu.directors, ',')[SAFE_OFFSET(0)])) = adc.director_key
+    LEFT JOIN country_name_fr cnf_director
+        ON lower(trim(adc.country)) = cnf_director.country_key
+    LEFT JOIN country_name_fr cnf_trakt
+        ON lower(trim(tyu.trakt_country)) = cnf_trakt.country_key
     LEFT JOIN manual_ratings mr
         ON tyu.title_key = mr.title_key
 )

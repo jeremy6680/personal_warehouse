@@ -1,13 +1,15 @@
 -- ============================================================
 -- Model: mrt_media__summary
 -- Layer: Mart
--- Description: Cross-domain aggregate — one row per media domain (books, movies,
---              music). Summarises total item counts, consumed vs. pending items
---              (read for books, watched for movies; null for music which has no
+-- Description: Cross-domain aggregate — one row per media domain. Summarises
+--              total item counts, consumed vs. pending items (read for books,
+--              watched for movies/anime; null for music and manga which have no
 --              consumption tracking), rated item counts, average unified rating,
 --              and country coverage.
 --              Note: all books in the collection are considered read (ADR-025).
--- Dependencies: mrt_books__collection, mrt_movies__collection, mrt_music__collection
+-- Dependencies: mrt_books__collection, mrt_movies__collection,
+--               mrt_music__collection, mrt_manga__collection,
+--               mrt_anime__collection
 -- Adapter note: COUNTIF is BigQuery-specific. For DuckDB/PostgreSQL replace with
 --               SUM(CASE WHEN <condition> THEN 1 ELSE 0 END).
 -- ============================================================
@@ -29,6 +31,14 @@ movies AS (
 
 music AS (
     SELECT * FROM {{ ref('mrt_music__collection') }}
+),
+
+manga AS (
+    SELECT * FROM {{ ref('mrt_manga__collection') }}
+),
+
+anime AS (
+    SELECT * FROM {{ ref('mrt_anime__collection') }}
 ),
 
 books_summary AS (
@@ -68,12 +78,40 @@ music_summary AS (
     FROM music
 ),
 
+manga_summary AS (
+    SELECT
+        'manga'                              AS domain,
+        COUNT(*)                             AS total_items,
+        CAST(NULL AS INT64)                  AS items_consumed,
+        CAST(NULL AS INT64)                  AS items_pending,
+        COUNTIF(is_rated)                    AS items_rated,
+        ROUND(AVG(rating), 2)                AS avg_rating,
+        COUNTIF(country IS NOT NULL)         AS items_with_country
+    FROM manga
+),
+
+anime_summary AS (
+    SELECT
+        'anime'                              AS domain,
+        COUNT(*)                             AS total_items,
+        COUNTIF(is_watched)                  AS items_consumed,
+        COUNTIF(NOT is_watched)              AS items_pending,
+        COUNTIF(is_rated)                    AS items_rated,
+        ROUND(AVG(rating), 2)                AS avg_rating,
+        COUNTIF(country IS NOT NULL)         AS items_with_country
+    FROM anime
+),
+
 combined AS (
     SELECT * FROM books_summary
     UNION ALL
     SELECT * FROM movies_summary
     UNION ALL
     SELECT * FROM music_summary
+    UNION ALL
+    SELECT * FROM manga_summary
+    UNION ALL
+    SELECT * FROM anime_summary
 )
 
 SELECT * FROM combined

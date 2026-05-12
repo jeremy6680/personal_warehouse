@@ -125,9 +125,10 @@ site) hosted on Netlify (free tier). See ADR-016 for the full architecture ratio
 
 ### Daily refresh automation
 
-- [ ] Generate a Netlify build hook URL
-- [ ] Append `curl -X POST <NETLIFY_BUILD_HOOK_URL>` to `scripts/spotify_launchd.plist`
+- [x] Generate a Netlify build hook URL
+- [x] Append `curl -X POST <NETLIFY_BUILD_HOOK_URL>` to `scripts/spotify_launchd.plist`
       (after the `dbt build` step) so the dashboard rebuilds daily at 09:30
+      via `scripts/run_spotify_refresh.sh` and `NETLIFY_BUILD_HOOK_URL` in `.env`
 
 ### Dashboard pages ✅
 
@@ -300,32 +301,33 @@ See ADR-017.
 
 ### Seeds
 
-- [ ] Create `seeds/manga/author_countries.csv` — author → country mapping for manga
-- [ ] Create `seeds/anime/director_countries.csv` — director → country mapping for anime
-- [ ] Update `seeds/_seeds.yml`
+- [x] Create `seeds/manga/manga_author_countries.csv` — author → country mapping for manga
+      (prefixed to avoid a dbt resource-name collision with `seeds/books/author_countries.csv`)
+- [x] Create `seeds/anime/anime_director_countries.csv` — director → country mapping for anime
+      (prefixed to avoid a dbt resource-name collision with `seeds/films/director_countries.csv`)
+- [x] Update `seeds/_seeds.yml`
 
 ### Staging — no new models needed (data already in existing CSVs)
 
-- [ ] Document in `_csv__sources.yml` that `bookbuddy.category = 'Manga'` → manga domain
-- [ ] Document that `moviebuddy.content_type = 'TV Shows' AND genres LIKE '%Animation%'` → anime domain
+- [x] Document in `_csv__sources.yml` that `bookbuddy.category = 'Manga'` → manga domain
+- [x] Document that `moviebuddy.content_type = 'TV Show' AND genres LIKE '%Animation%'` → anime domain
 
 ### Intermediate — new models
 
-- [ ] Create `models/intermediate/manga/int_manga__unified.sql` - Source: `stg_csv__bookbuddy` filtered on `category = 'Manga'` - Enrichment: country from `seeds/manga/author_countries.csv` - Genre normalisation via `genre_mapping`
-- [x] Create `models/intermediate/anime/int_anime__unified.sql` - Source: `stg_csv__moviebuddy` filtered on `content_type = 'TV Shows' AND 'Animation' IN genres` + `stg_trakt__watched_shows` filtered on the same criterion - Rating priority: `COALESCE(trakt_rating, moviebuddy_rating)` (ADR-019) - Genre normalisation via `genre_mapping`
-- [ ] Create `models/intermediate/manga/_int_manga__models.yml`
-- [ ] Create `models/intermediate/anime/_int_anime__models.yml`
+- [x] Create `models/intermediate/manga/int_manga__unified.sql` - Source: `stg_csv__bookbuddy` filtered on `category = 'Manga'` - Enrichment: country from `seeds/manga/manga_author_countries.csv` - Genre normalisation via `genre_mapping`
+- [x] Create `models/intermediate/anime/int_anime__unified.sql` - Source: `stg_csv__moviebuddy` filtered on `content_type = 'TV Show' AND 'Animation' IN genres` + `stg_trakt__watched_shows` filtered on the same criterion - Rating priority: `COALESCE(trakt_rating, moviebuddy_rating)` (ADR-019) - Genre normalisation via `genre_mapping`
+- [x] Document `int_manga__unified` in `models/intermediate/_intermediate__models.yml`
+- [x] Document `int_anime__unified` in `models/intermediate/_intermediate__models.yml`
 - [ ] Create `models/intermediate/manga/_int_manga__docs.md`
 - [ ] Create `models/intermediate/anime/_int_anime__docs.md`
 
 ### Mart — new models
 
-- [ ] Create `models/mart/manga/mrt_manga__collection.sql`
-- [ ] Create `models/mart/anime/mrt_anime__collection.sql`
-- [ ] Update `mrt_media__summary` to include manga and anime domain counts
-- [ ] Update `mrt_media__country_index` to include manga and anime rows
-- [ ] Create `models/mart/manga/_mart__models.yml` + `_mart__docs.md`
-- [ ] Create `models/mart/anime/_mart__models.yml` + `_mart__docs.md`
+- [x] Create `models/mart/manga/mrt_manga__collection.sql`
+- [x] Create `models/mart/anime/mrt_anime__collection.sql`
+- [x] Update `mrt_media__summary` to include manga and anime domain counts
+- [x] Update `mrt_media__country_index` to include manga and anime rows
+- [x] Document manga/anime mart models in `models/mart/_mart__models.yml`
 
 ---
 
