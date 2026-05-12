@@ -138,8 +138,8 @@ site) hosted on Netlify (free tier). See ADR-016 for the full architecture ratio
 - [x] **Music — Stats** (`/music/stats`) — charts by genre, country, decade, rating
       distribution, top artists
 - [x] **Books — Collection** (`/books/collection`) — full book table with filters on
-      status, genre, country, read-only toggle; BigValue KPIs
-- [x] **Books — Stats** (`/books/stats`) — charts by status, genre, country, decade,
+      genre, country, rated-only toggle; BigValue KPIs
+- [x] **Books — Stats** (`/books/stats`) — charts by genre, country, decade,
       rating distribution, top authors
 - [x] **Movies — Collection** (`/movies/collection`) — full movie/TV table with filters
       on content type, genre, country, watched-only toggle; BigValue KPIs
@@ -268,7 +268,7 @@ See ADR-018 and ADR-019.
 ### Intermediate — update for Trakt
 
 - [x] Update `int_movies__unified` to include Trakt as a third film source - Matching: `lower(trim(title)) + release_year` (consistent with existing pattern) - Rating priority: `COALESCE(trakt_rating, letterboxd_rating, moviebuddy_rating)` (ADR-019) - Add `source` column: `trakt`, `letterboxd`, `moviebuddy`, or combination
-- [x] Create `int_anime__unified` — filtered Trakt shows + filtered MovieBuddy `TV Shows / Animation` - Rating priority: `COALESCE(trakt_rating, moviebuddy_rating)` (ADR-019)
+- [x] Create `int_anime__unified` — filtered Trakt shows + filtered MovieBuddy `TV Show / Animation` - Rating priority: `COALESCE(trakt_rating, moviebuddy_rating)` (ADR-019)
 
 ---
 
@@ -318,8 +318,8 @@ See ADR-017.
 - [x] Create `models/intermediate/anime/int_anime__unified.sql` - Source: `stg_csv__moviebuddy` filtered on `content_type = 'TV Show' AND 'Animation' IN genres` + `stg_trakt__watched_shows` filtered on the same criterion - Rating priority: `COALESCE(trakt_rating, moviebuddy_rating)` (ADR-019) - Genre normalisation via `genre_mapping`
 - [x] Document `int_manga__unified` in `models/intermediate/_intermediate__models.yml`
 - [x] Document `int_anime__unified` in `models/intermediate/_intermediate__models.yml`
-- [ ] Create `models/intermediate/manga/_int_manga__docs.md`
-- [ ] Create `models/intermediate/anime/_int_anime__docs.md`
+- [x] Keep manga/anime intermediate docs in `models/intermediate/_intermediate__models.yml`
+      for now; no separate `_int_*__docs.md` files needed yet
 
 ### Mart — new models
 
@@ -351,13 +351,15 @@ See ADR-017.
 
 ### New domains
 
-- [ ] Create page `/manga/collection` — table + KPIs
-- [ ] Create page `/manga/stats` — genre, country, author charts
-- [ ] Create page `/anime/collection` — table + KPIs
-- [ ] Create page `/anime/stats` — genre, country, studio/director charts
-- [ ] Update sidebar to include `Manga` and `Animé`
-- [ ] Update `/summary` page to include manga and anime counters
-- [ ] Update `/map` page to include manga and anime domains
+- [x] Create page `/manga/collection` — table + KPIs
+- [x] Create page `/manga/stats` — genre, country, author charts
+- [x] Create page `/anime/collection` — table + KPIs
+- [x] Create page `/anime/stats` — genre, country, studio/director charts
+- [x] Update sidebar to include `Manga` and `Animé`
+- [x] Update `/summary` page to include manga and anime counters
+- [x] Update `/map` page to include manga and anime domains
+      Note: automatic via `mrt_media__country_index` and the domain dropdown; no page-specific
+      query change was needed.
 
 ### Music media format
 
@@ -370,16 +372,10 @@ See ADR-017.
 ## Recommended execution order
 
 ```
-1.  Normalisation seeds (genre_mapping, author_name_mapping, country_name_fr, manual_ratings)
-2.  dbt tests on existing models
-3.  Books refactoring (remove status, genre normalisation, author name variants)
-4.  Films refactoring (add source column, genre normalisation, rating priority)
-5.  Music refactoring (media_format, genre normalisation)
-6.  New source: Trakt (script + staging + intermediate update)
-7.  New source: Bandcamp (CSV export + staging + intermediate update)
-8.  New domains: manga + anime (intermediate + mart)
-9.  Dashboard — immediate fixes (sidebar, breadcrumb, logo, films source, map palette)
-10. Dashboard — new domains (manga + anime pages)
-11. Dashboard — music media format (filter + chart)
-12. Complementary dbt tests (singular tests + tags)
+1.  Dashboard — immediate fixes (films source, sidebar labels, breadcrumb, logo)
+2.  Dashboard — world map palette
+3.  Dashboard — music media format (filter + chart)
+4.  Bandcamp — inspect live response field names when credentials/session are available
+5.  Schedule CSV/API refresh beyond Spotify if still useful
+6.  Future enrichments: TMDB matching, Deezer ingestion, listening history if audio features return
 ```

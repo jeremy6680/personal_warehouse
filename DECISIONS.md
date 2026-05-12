@@ -423,11 +423,11 @@ macOS launchd (09:30 daily)
 
 ## ADR-017 — New domains: manga and anime
 
-**Date:** 2026
+**Date:** 2026-05-12
 **Status:** Active
 
 **Context:** The collection contains manga (in BookBuddy, category `Manga`) and anime
-(in MovieBuddy, items with `content_type = 'TV Shows'` and `Animation` in their genres).
+(in MovieBuddy, items with `content_type = 'TV Show'` and `Animation` in their genres).
 Both domains have characteristics distinct enough from books and films to warrant
 separate domain treatment.
 
@@ -435,23 +435,31 @@ separate domain treatment.
 
 - **Manga** are extracted from `stg_csv__bookbuddy` via a `category = 'Manga'` filter in
   the intermediate layer. A new `int_manga__unified` model isolates them. The corresponding
-  mart is `mrt_manga__collection`.
+  mart is `mrt_manga__collection`, surfaced in Evidence at `/manga/collection` and
+  `/manga/stats`.
 - **Anime** are extracted from `stg_csv__moviebuddy` (and `stg_trakt__*` when available)
-  via a `content_type = 'TV Shows' AND 'Animation' IN genres` filter. A new
-  `int_anime__unified` model isolates them. The corresponding mart is `mrt_anime__collection`.
+  via a `content_type = 'TV Show' AND 'Animation' IN genres` filter. A new
+  `int_anime__unified` model isolates them. The corresponding mart is `mrt_anime__collection`,
+  surfaced in Evidence at `/anime/collection` and `/anime/stats`.
 - Manga are **removed** from `int_books__unified` and anime are **removed** from
   `int_movies__unified` to prevent domain mixing.
+- Cross-domain marts (`mrt_media__summary`, `mrt_media__country_index`) include manga
+  and anime, so the Evidence summary and map pages pick them up as first-class domains.
+- Country reference seeds are named `seeds/manga/manga_author_countries.csv` and
+  `seeds/anime/anime_director_countries.csv` to avoid dbt resource-name collisions with
+  the existing books/films country seeds.
 
 **Rationale:**
 
 - Manga and novels are consumed and analysed differently (authorship patterns,
   serialisation, volume counts).
 - Anime and Western films have different metadata structures and consumption patterns.
-- Seeds must be extended: `seeds/manga/author_countries.csv` and
-  `seeds/anime/director_countries.csv`.
+- Prefixed country seed names keep dbt's global seed namespace unambiguous.
 
 **Trade-offs:** Two new domains add two new staging → intermediate → mart branches to
 maintain. Accepted — the domain separation is cleaner and more scalable long-term.
+Country coverage starts sparse until the manga/anime reference seeds are manually populated;
+unmatched creators simply produce null country fields without dropping rows.
 
 ---
 
