@@ -25,6 +25,29 @@ seeds:
         data_tests:
           - not_null
 
+  - name: manga_author_countries
+    description: >
+      Manual mapping of manga authors to their country of origin or nationality.
+      Used to enrich int_manga__unified with a country dimension. This seed is
+      intentionally named with the manga_ prefix because dbt resource names are
+      package-wide; using another author_countries.csv would collide with the
+      books seed.
+    config:
+      tags: ["seeds", "manga", "reference"]
+      column_types:
+        author: STRING
+        country: STRING
+    columns:
+      - name: author
+        description: Manga author name as it appears in BookBuddy.
+        data_tests:
+          - unique
+          - not_null
+      - name: country
+        description: Country of origin or nationality of the author.
+        data_tests:
+          - not_null
+
   - name: director_countries
     description: >
       Manual mapping of director names to their country of origin or nationality.
@@ -42,6 +65,29 @@ seeds:
           - not_null
       - name: country
         description: Country of origin or nationality of the director (e.g., United Kingdom, Japan).
+        data_tests:
+          - not_null
+
+  - name: anime_director_countries
+    description: >
+      Manual mapping of anime directors to their country of origin or nationality.
+      Used as the preferred country source in int_anime__unified when MovieBuddy
+      director data is available, before falling back to Trakt country. This seed
+      is intentionally named with the anime_ prefix to avoid colliding with the
+      films director_countries seed.
+    config:
+      tags: ["seeds", "anime", "reference"]
+      column_types:
+        director: STRING
+        country: STRING
+    columns:
+      - name: director
+        description: Anime director name as it appears first in MovieBuddy directors.
+        data_tests:
+          - unique
+          - not_null
+      - name: country
+        description: Country of origin or nationality of the director.
         data_tests:
           - not_null
 

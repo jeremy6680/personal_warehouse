@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  macOS launchd job — runs Spotify ingestion daily at 09:30 Europe/Paris.
+  macOS launchd job — runs Spotify ingestion daily at 09:30 Europe/Paris,
+  rebuilds the selected dbt models, then triggers the Evidence dashboard
+  rebuild through the Netlify build hook configured in .env.
   launchd schedules in local system time, so adjust Hour if your Mac is set
   to a different timezone (09:30 Paris = 09:30 if Mac timezone is Europe/Paris).
 
   Install (once):
+    cp scripts/spotify_launchd.plist ~/Library/LaunchAgents/com.jeremymarchandeau.spotify_ingest.plist
+    launchctl load ~/Library/LaunchAgents/com.jeremymarchandeau.spotify_ingest.plist
+
+  Update after editing this file:
+    launchctl unload ~/Library/LaunchAgents/com.jeremymarchandeau.spotify_ingest.plist
     cp scripts/spotify_launchd.plist ~/Library/LaunchAgents/com.jeremymarchandeau.spotify_ingest.plist
     launchctl load ~/Library/LaunchAgents/com.jeremymarchandeau.spotify_ingest.plist
 
@@ -26,9 +33,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/bin/bash</string>
-        <string>-c</string>
-        <string>cd /Users/jeremymarchandeau/Code/personal/projects/personal_warehouse/personal_warehouse &amp;&amp; /Users/jeremymarchandeau/Code/personal/projects/personal_warehouse/.venv/bin/python scripts/spotify_to_bq.py &amp;&amp; /Users/jeremymarchandeau/Code/personal/projects/personal_warehouse/.venv/bin/dbt build --select tag:spotify+</string>
+        <string>/Users/jeremymarchandeau/Code/personal/projects/personal_warehouse/personal_warehouse/scripts/run_spotify_refresh.sh</string>
     </array>
 
     <key>StartCalendarInterval</key>

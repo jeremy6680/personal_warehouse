@@ -273,15 +273,122 @@ models:
                   - "vinyl, digital"
                   - "cd, vinyl, digital"
 
+  # ── Manga ─────────────────────────────────────────────────────────────────
+
+  - name: mrt_manga__collection
+    description: >
+      Manga collection from BookBuddy rows categorized as Manga. Country is
+      enriched through manga_author_countries when available.
+    config:
+      tags: ["mart", "manga"]
+    columns:
+      - name: manga_id
+        description: Surrogate key inherited from int_manga__unified.
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('int_manga__unified')
+                field: manga_id
+      - name: title
+        description: Manga title.
+        data_tests:
+          - not_null
+      - name: author
+        description: Manga author.
+      - name: genre
+        description: Normalised French genre label from genre_mapping.
+      - name: category
+        description: BookBuddy category.
+      - name: rating
+        description: Personal rating on a 0–5 scale.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
+      - name: is_rated
+        description: True if rating is not null.
+      - name: isbn
+        description: ISBN from BookBuddy.
+      - name: tags
+        description: Comma-separated user tags from BookBuddy.
+      - name: country
+        description: Country of the author in French when mapped.
+      - name: source
+        description: Source app that contributed the row.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["bookbuddy"]
+
+  # ── Anime ─────────────────────────────────────────────────────────────────
+
+  - name: mrt_anime__collection
+    description: >
+      Anime collection from Trakt and MovieBuddy animated TV shows. Rating is
+      resolved upstream with priority Trakt > MovieBuddy > manual fallback.
+    config:
+      tags: ["mart", "anime"]
+    columns:
+      - name: anime_id
+        description: Surrogate key inherited from int_anime__unified.
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('int_anime__unified')
+                field: anime_id
+      - name: title
+        description: Anime title.
+        data_tests:
+          - not_null
+      - name: content_type
+        description: Media type, always TV Show.
+      - name: release_year
+        description: Release year.
+      - name: is_watched
+        description: True if the item has a Trakt watched date.
+      - name: first_watched_date
+        description: First known Trakt watched date at show level.
+      - name: last_watched_date
+        description: Most recent Trakt watched date at show level.
+      - name: rating
+        description: Personal rating on a 0–5 scale.
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
+      - name: is_rated
+        description: True if rating is not null.
+      - name: directors
+        description: Comma-separated director names from MovieBuddy.
+      - name: genres
+        description: Normalised French genre labels from genre_mapping.
+      - name: runtime_minutes
+        description: Runtime in minutes.
+      - name: tmdb_id
+        description: TMDB identifier from MovieBuddy or Trakt.
+      - name: country
+        description: Country in French when mapped.
+      - name: source
+        description: Source app or matched source combination that contributed the row.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["trakt_and_moviebuddy", "trakt", "moviebuddy"]
+
   # ── Cross-domain ──────────────────────────────────────────────────────────
 
   - name: mrt_media__country_index
     description: >
       Cross-domain country spine — one row per (country, domain, item). Links each
-      country to all books, films, and albums associated with it. person_name is the
-      author (books), primary director (movies), or artist (music). Only rows with
-      a known country are included. Enables country-centric queries across all media
-      types without joining three mart tables at query time.
+      country to all books, films, albums, manga, and anime associated with it.
+      person_name is the author (books/manga), primary director (movies/anime), or
+      artist (music). Only rows with a known country are included.
     config:
       tags: ["mart", "cross_domain"]
     columns:
@@ -293,12 +400,12 @@ models:
         data_tests:
           - not_null
       - name: domain
-        description: Media domain — books, movies, or music.
+        description: Media domain — books, movies, music, manga, or anime.
         data_tests:
           - not_null
           - accepted_values:
               arguments:
-                values: ["books", "movies", "music"]
+                values: ["books", "movies", "music", "manga", "anime"]
       - name: item_id
         description: Domain-specific surrogate key (book_id, movie_id, or album_id).
         data_tests:
@@ -329,7 +436,7 @@ models:
 
   - name: mrt_media__summary
     description: >
-      Cross-domain aggregate — one row per media domain (books, movies, music).
+      Cross-domain aggregate — one row per media domain.
       Summarises total item counts, consumed vs. pending items (read for books,
       watched for movies; null for music which has no consumption tracking),
       rated item counts, average unified rating, and country coverage.
@@ -343,19 +450,19 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: ["books", "movies", "music"]
+                values: ["books", "movies", "music", "manga", "anime"]
       - name: total_items
         description: Total number of items in the collection for this domain.
         data_tests:
           - not_null
       - name: items_consumed
         description: >
-          Items consumed: books read, movies watched.
-          Null for music (no consumption tracking in MusicBuddy).
+          Items consumed: books read, movies/anime watched.
+          Null for music and manga.
       - name: items_pending
         description: >
-          Items not yet consumed: unread books, unwatched movies.
-          Null for music.
+          Items not yet consumed: unread books, unwatched movies/anime.
+          Null for music and manga.
       - name: items_rated
         description: Number of items with a non-null unified rating.
       - name: avg_rating

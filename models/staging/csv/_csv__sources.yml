@@ -63,6 +63,7 @@ models:
     description: >
       BookBuddy collection export, cleaned and typed.
       Selects title, author, genre, category, status, rating, ISBN, and tags.
+      Rows where category = 'Manga' are routed to the manga domain downstream.
     config:
       tags: ["staging", "books"]
     columns:
@@ -135,6 +136,8 @@ models:
     description: >
       MovieBuddy collection export, cleaned and typed.
       Covers both movies and TV shows, with rating, genres, directors, and TMDB ID.
+      TV Show rows whose genres include Animation are routed to the anime domain
+      downstream.
     config:
       tags: ["staging", "movies"]
     columns:
