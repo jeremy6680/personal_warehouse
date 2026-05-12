@@ -251,23 +251,23 @@ See ADR-018 and ADR-019.
 
 ### Ingestion script
 
-- [ ] Create `scripts/trakt_to_bq.py` - Auth: API key (no OAuth required for public profiles; OAuth if profile is private) - Endpoints: watched movies, watched shows, ratings (movies + shows) - Output: `raw_personal.trakt_watched_movies`, `raw_personal.trakt_watched_shows`,
+- [x] Create `scripts/trakt_to_bq.py` - Auth: API key (no OAuth required for public profiles; OAuth if profile is private) - Endpoints: watched movies, watched shows, ratings (movies + shows) - Output: `raw_personal.trakt_watched_movies`, `raw_personal.trakt_watched_shows`,
       `raw_personal.trakt_ratings` - Pattern: full-refresh (same approach as `spotify_to_bq.py`)
-- [ ] Add Trakt vars (`TRAKT_API_KEY`, `TRAKT_USERNAME`) to `.env.example`
-- [ ] Update `requirements.txt`
+- [x] Add Trakt vars (`TRAKT_API_KEY`, `TRAKT_USERNAME`) to `.env.example`
+- [x] Update `requirements.txt`
 
 ### Trakt staging (personal-warehouse)
 
-- [ ] `models/staging/trakt/stg_trakt__watched_movies.sql`
-- [ ] `models/staging/trakt/stg_trakt__watched_shows.sql`
-- [ ] `models/staging/trakt/stg_trakt__ratings.sql`
-- [ ] `models/staging/trakt/_trakt__sources.yml` — source declarations + column docs + tests
-- [ ] `models/staging/trakt/_trakt__docs.md` — docs blocks
+- [x] `models/staging/trakt/stg_trakt__watched_movies.sql`
+- [x] `models/staging/trakt/stg_trakt__watched_shows.sql`
+- [x] `models/staging/trakt/stg_trakt__ratings.sql`
+- [x] `models/staging/trakt/_trakt__sources.yml` — source declarations + column docs + tests
+- [x] `models/staging/trakt/_trakt__docs.md` — docs blocks
 
 ### Intermediate — update for Trakt
 
-- [ ] Update `int_movies__unified` to include Trakt as a third film source - Matching: `lower(trim(title)) + release_year` (consistent with existing pattern) - Rating priority: `COALESCE(trakt_rating, letterboxd_rating, moviebuddy_rating)` (ADR-019) - Add `source` column: `trakt`, `letterboxd`, `moviebuddy`, or combination
-- [ ] Create `int_anime__unified` — filtered Trakt shows + filtered MovieBuddy `TV Shows / Animation` - Rating priority: `COALESCE(trakt_rating, moviebuddy_rating)` (ADR-019)
+- [x] Update `int_movies__unified` to include Trakt as a third film source - Matching: `lower(trim(title)) + release_year` (consistent with existing pattern) - Rating priority: `COALESCE(trakt_rating, letterboxd_rating, moviebuddy_rating)` (ADR-019) - Add `source` column: `trakt`, `letterboxd`, `moviebuddy`, or combination
+- [x] Create `int_anime__unified` — filtered Trakt shows + filtered MovieBuddy `TV Shows / Animation` - Rating priority: `COALESCE(trakt_rating, moviebuddy_rating)` (ADR-019)
 
 ---
 
@@ -312,7 +312,7 @@ See ADR-017.
 ### Intermediate — new models
 
 - [ ] Create `models/intermediate/manga/int_manga__unified.sql` - Source: `stg_csv__bookbuddy` filtered on `category = 'Manga'` - Enrichment: country from `seeds/manga/author_countries.csv` - Genre normalisation via `genre_mapping`
-- [ ] Create `models/intermediate/anime/int_anime__unified.sql` - Source: `stg_csv__moviebuddy` filtered on `content_type = 'TV Shows' AND 'Animation' IN genres` + `stg_trakt__watched_shows` filtered on the same criterion - Rating priority: `COALESCE(trakt_rating, moviebuddy_rating)` (ADR-019) - Genre normalisation via `genre_mapping`
+- [x] Create `models/intermediate/anime/int_anime__unified.sql` - Source: `stg_csv__moviebuddy` filtered on `content_type = 'TV Shows' AND 'Animation' IN genres` + `stg_trakt__watched_shows` filtered on the same criterion - Rating priority: `COALESCE(trakt_rating, moviebuddy_rating)` (ADR-019) - Genre normalisation via `genre_mapping`
 - [ ] Create `models/intermediate/manga/_int_manga__models.yml`
 - [ ] Create `models/intermediate/anime/_int_anime__models.yml`
 - [ ] Create `models/intermediate/manga/_int_manga__docs.md`

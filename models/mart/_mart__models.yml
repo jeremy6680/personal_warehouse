@@ -77,9 +77,9 @@ models:
 
   - name: mrt_movies__collection
     description: >
-      Full movie and TV show collection — watched and wishlist items. Single unified
-      rating: Letterboxd is the source of truth when both sources have a rating,
-      otherwise MovieBuddy rating is used. rating is null for unrated items.
+      Full movie collection — watched and wishlist items. Single unified rating is
+      resolved upstream with priority Trakt > Letterboxd > MovieBuddy > manual fallback.
+      rating is null for unrated items.
       source indicates which app(s) contributed the row.
     config:
       tags: ["mart", "movies"]
@@ -148,14 +148,23 @@ models:
       - name: source
         description: >
           Which app(s) contributed this row.
-          'moviebuddy_and_letterboxd' — matched across both sources.
+          Trakt, Letterboxd, and MovieBuddy combinations are possible.
           'letterboxd' — only in Letterboxd diary.
           'moviebuddy' — only in MovieBuddy collection.
+          'trakt' — only in Trakt.
         data_tests:
           - accepted_values:
               arguments:
                 values:
-                  ["moviebuddy_and_letterboxd", "letterboxd", "moviebuddy"]
+                  [
+                    "trakt_and_letterboxd_and_moviebuddy",
+                    "trakt_and_letterboxd",
+                    "trakt_and_moviebuddy",
+                    "letterboxd_and_moviebuddy",
+                    "trakt",
+                    "letterboxd",
+                    "moviebuddy"
+                  ]
 
   # ── Music ─────────────────────────────────────────────────────────────────
 
