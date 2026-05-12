@@ -277,10 +277,10 @@ See ADR-018 and ADR-020.
 
 ### Ingestion
 
-- [ ] Export `bandcamp-data-{date}.zip` from Settings > Data Export on bandcamp.com
-- [ ] Extract and place in `data/`: `bandcamp_collection.csv`, `bandcamp_wishlist.csv`
-- [ ] Load into BigQuery via `bq load` (update `scripts/bq_load.sh`)
-- [ ] Document actual Bandcamp export column names in `_csv__sources.yml`
+- [ ] Create `scripts/bandcamp_to_bq.py`: - Auth via session cookie (`BANDCAMP_IDENTITY_COOKIE` + `BANDCAMP_FAN_ID` from `.env`) - Endpoint: `POST /api/fancollection/1/collection_items` (paginated via `older_than_token`) - Full-refresh write to `raw_personal.bandcamp_collection` - Endpoint: `POST /api/fancollection/1/wishlist_items` - Full-refresh write to `raw_personal.bandcamp_wishlist` - Reference: https://github.com/michaelherger/Bandcamp-API
+- [ ] Add `BANDCAMP_IDENTITY_COOKIE` and `BANDCAMP_FAN_ID` to `.env.example`
+- [ ] Update `requirements.txt` if new dependencies needed
+- [ ] Document actual Bandcamp response field names (inspect a live API call) before writing staging models
 
 ### Bandcamp staging (personal-warehouse)
 

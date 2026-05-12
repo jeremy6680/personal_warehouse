@@ -484,27 +484,36 @@ maintain. Accepted — the domain separation is cleaner and more scalable long-t
 ### Bandcamp
 
 - **No public user API** available (collection, wishlist data not exposed via API).
-- Official alternative: **CSV export** from Settings > Data Export on bandcamp.com.
-- Ingestion: manual CSV → `bq load` (same pattern as other CSV sources).
-- Files in `data/`: `bandcamp_collection.csv`, `bandcamp_wishlist.csv`.
-- Raw tables: `raw_personal.bandcamp_collection`, `raw_personal.bandcamp_wishlist`.
-- Staging: `models/staging/csv/stg_csv__bandcamp_collection.sql`,
-  `stg_csv__bandcamp_wishlist.sql`.
+- Official CSV export does not exist — the "Settings > Data Export" option mentioned
+  in previous notes is incorrect (no such feature exists on bandcamp.com as of 2026).
+- **Chosen approach:** Python script `scripts/bandcamp_to_bq.py` calling Bandcamp's
+  **internal (undocumented) web API**, reverse-engineered and documented by
+  Michael Herger at https://github.com/michaelherger/Bandcamp-API.
+- Auth: session cookie (`Cookie: identity=...`) extracted from a browser session.
+  Relevant endpoint: `POST /api/fancollection/1/collection_items` with `fan_id`.
+- Output: full-refresh write to `raw_personal.bandcamp_collection` and
+  `raw_personal.bandcamp_wishlist` (same pattern as `spotify_to_bq.py`).
+- The cookie must be refreshed manually when it expires (typically every few weeks).
+  Add `BANDCAMP_IDENTITY_COOKIE` and `BANDCAMP_FAN_ID` to `.env.example`.
 
-**Note on scraping:** Scraping bandcamp.com is technically feasible but violates the
-Terms of Service and is fragile. The official export is preferred — stable, complete,
-and compliant.
+**Note on ToS:** Bandcamp's Terms of Service prohibit scraping for commercial use.
+This project is strictly personal, non-commercial, and non-redistributed.
+The internal API is the same one Bandcamp's own frontend calls — no credentials
+other than the user's own session are used. Risk accepted for a personal portfolio project.
 
 **Rationale:**
 
-- Trakt is preferred over Letterboxd for ratings (see ADR-019) and provides richer
-  API data with a stable, well-documented endpoint.
-- Bandcamp complements Spotify and MusicBuddy for purchased albums (digital and physical).
-- Consistent with the existing ingestion patterns: Python scripts for APIs,
-  `bq load` for CSV files.
+- No official export exists — the internal API is the only viable programmatic option.
+- Consistent with the existing ingestion patterns: Python scripts write directly to BigQuery.
+- More automatable than a manual browser workflow.
 
-**Trade-offs:** Bandcamp requires a manual export (no automation possible without an API).
-Trakt requires an API key (simpler auth than Spotify — no PKCE flow needed).
+**Trade-offs:**
+
+- The internal API is undocumented and can break without notice if Bandcamp changes
+  its frontend.
+- Session cookie requires periodic manual refresh (no OAuth flow available).
+- Pagination uses an `older_than_token` mechanism whose structure is partially
+  undocumented — requires careful implementation.
 
 ---
 
