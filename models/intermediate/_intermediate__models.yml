@@ -252,16 +252,18 @@ models:
 
   - name: int_music__unified
     description: >
-      Full union of MusicBuddy and Spotify saved albums, deduplicated to one
-      row per album. Three cases: matched (both sources), musicbuddy_only,
-      spotify_only. Matching is on normalized artist + title (single pass).
+      Full union of MusicBuddy, Bandcamp collection/wishlist, and Spotify saved
+      albums, deduplicated to one row per album. Matching is on
+      normalized artist + title (single pass), with MusicBuddy > Bandcamp >
+      Spotify metadata priority (ADR-020).
       Spotify album genres are enriched via a LEFT JOIN on followed_artists
       using the primary artist Spotify ID — album-level genres are almost
       always empty in the Spotify API.
       Genre normalised to French via the genre_mapping seed (ADR-022):
       comma-separated string for MusicBuddy rows, JSON array for Spotify rows.
       media_format tracks physical/digital origin per source (ADR-021):
-      MusicBuddy → 'cd', Spotify → 'digital', both → 'cd, digital'.
+      MusicBuddy → 'cd', Bandcamp/Spotify → 'digital', matched formats
+      concatenate to values such as 'cd, digital'.
       Manual ratings applied as last-resort fallback (ADR-024).
       Country name translated to French via the country_name_fr seed (ADR-026).
       artist_display strips Discogs disambiguation suffixes for MusicBuddy rows.
@@ -271,8 +273,8 @@ models:
       - name: album_id
         description: >
           Surrogate key. For MusicBuddy rows: derived from title + artist +
-          discogs_release_id (carried from staging). For Spotify-only rows:
-          derived from album_name + artists.
+          discogs_release_id (carried from staging). For Bandcamp/Spotify-only
+          rows: derived from title + artist.
         data_tests:
           - unique
           - not_null
@@ -291,7 +293,7 @@ models:
       - name: artist_display
         description: >
           Artist name with Discogs disambiguation suffix stripped
-          (e.g. "Ayo (2)" → "Ayo"). For Spotify-only rows, identical to artist.
+          (e.g. "Ayo (2)" → "Ayo"). For Bandcamp/Spotify-only rows, identical to artist.
           Use this column for display and reporting.
       - name: genres
         description: >
@@ -305,18 +307,29 @@ models:
           Release year. For Spotify rows: extracted from the variable-precision
           release_date string (YYYY, YYYY-MM, or YYYY-MM-DD).
       - name: discogs_release_id
-        description: Discogs release identifier. Null for Spotify-only rows.
+        description: Discogs release identifier. Null for rows not present in MusicBuddy.
       - name: spotify_album_id
         description: Spotify native album identifier. Null for MusicBuddy-only rows.
       - name: total_tracks
         description: Total number of tracks on the album, from Spotify. Null for MusicBuddy-only rows.
       - name: spotify_added_at
         description: Timestamp when the album was saved to the Spotify library. Null for MusicBuddy-only rows.
+      - name: bandcamp_item_id
+        description: Bandcamp item identifier. Null for rows not present in the Bandcamp collection.
+      - name: bandcamp_item_url
+        description: Bandcamp item URL. Null for rows not present in the Bandcamp collection.
+      - name: bandcamp_added_at
+        description: Source timestamp-like field returned by Bandcamp. Null for rows not present in the Bandcamp collection.
+      - name: bandcamp_origin
+        description: >
+          Bandcamp origin for this album: collection, wishlist, or collection, wishlist.
+          Wishlist is included because adding an album there means it was listened to
+          and liked.
       - name: rating
         description: >
           Personal rating on a 0–5 scale. Sourced from MusicBuddy when available;
           falls back to manual_ratings seed if the source rating is null (ADR-024).
-          Null for Spotify-only rows unless a manual rating exists.
+          Null for Bandcamp/Spotify-only rows unless a manual rating exists.
         data_tests:
           - dbt_expectations.expect_column_values_to_be_between:
               arguments:
@@ -331,14 +344,21 @@ models:
       - name: source_name
         description: >
           Data origin.
-          'musicbuddy' — album only in MusicBuddy.
-          'spotify' — album only in Spotify saved albums.
-          'both' — matched across both sources.
+          Values identify the source app or source combination contributing the row.
         data_tests:
           - not_null
           - accepted_values:
               arguments:
-                values: ["musicbuddy", "spotify", "both"]
+                values:
+                  [
+                    "musicbuddy_and_bandcamp_and_spotify",
+                    "musicbuddy_and_bandcamp",
+                    "musicbuddy_and_spotify",
+                    "bandcamp_and_spotify",
+                    "musicbuddy",
+                    "bandcamp",
+                    "spotify"
+                  ]
       - name: match_type
         description: >
           Cross-source join strategy.
@@ -348,7 +368,7 @@ models:
         description: >
           Physical or digital format of the album, derived from source origin (ADR-021).
           'cd' — present in MusicBuddy only.
-          'digital' — present in Spotify only.
+          'digital' — present in Bandcamp and/or Spotify only.
           'cd, digital' — matched across both sources.
         data_tests:
           - not_null

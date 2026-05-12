@@ -277,20 +277,20 @@ See ADR-018 and ADR-020.
 
 ### Ingestion
 
-- [ ] Create `scripts/bandcamp_to_bq.py`: - Auth via session cookie (`BANDCAMP_IDENTITY_COOKIE` + `BANDCAMP_FAN_ID` from `.env`) - Endpoint: `POST /api/fancollection/1/collection_items` (paginated via `older_than_token`) - Full-refresh write to `raw_personal.bandcamp_collection` - Endpoint: `POST /api/fancollection/1/wishlist_items` - Full-refresh write to `raw_personal.bandcamp_wishlist` - Reference: https://github.com/michaelherger/Bandcamp-API
-- [ ] Add `BANDCAMP_IDENTITY_COOKIE` and `BANDCAMP_FAN_ID` to `.env.example`
-- [ ] Update `requirements.txt` if new dependencies needed
+- [x] Create `scripts/bandcamp_to_bq.py`: - Auth via session cookie (`BANDCAMP_IDENTITY_COOKIE` + `BANDCAMP_FAN_ID` from `.env`) - Endpoint: `POST /api/fancollection/1/collection_items` (paginated via `older_than_token`) - Full-refresh write to `raw_personal.bandcamp_collection` - Endpoint: `POST /api/fancollection/1/wishlist_items` - Full-refresh write to `raw_personal.bandcamp_wishlist` - Reference: https://github.com/michaelherger/Bandcamp-API
+- [x] Add `BANDCAMP_IDENTITY_COOKIE` and `BANDCAMP_FAN_ID` to `.env.example`
+- [x] Update `requirements.txt` if new dependencies needed
 - [ ] Document actual Bandcamp response field names (inspect a live API call) before writing staging models
 
 ### Bandcamp staging (personal-warehouse)
 
-- [ ] `models/staging/csv/stg_csv__bandcamp_collection.sql`
-- [ ] `models/staging/csv/stg_csv__bandcamp_wishlist.sql`
-- [ ] Update `models/staging/csv/_csv__sources.yml` with new source declarations
+- [x] `models/staging/csv/stg_csv__bandcamp_collection.sql`
+- [x] `models/staging/csv/stg_csv__bandcamp_wishlist.sql`
+- [x] Update `models/staging/csv/_csv__sources.yml` with new source declarations
 
 ### Intermediate — update for Bandcamp
 
-- [ ] Update `int_music__unified` to include Bandcamp as a third music source - Matching: `lower(trim(title)) + lower(trim(artist))` - Deduplication: one row per album, `media_format` = concatenated formats (ADR-020) - Metadata priority: MusicBuddy > Bandcamp > Spotify (ADR-020)
+- [x] Update `int_music__unified` to include Bandcamp as a third music source - Matching: `lower(trim(title)) + lower(trim(artist))` - Deduplication: one row per album, `media_format` = concatenated formats (ADR-020) - Metadata priority: MusicBuddy > Bandcamp > Spotify (ADR-020)
 
 ---
 

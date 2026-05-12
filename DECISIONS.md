@@ -463,9 +463,8 @@ maintain. Accepted — the domain separation is cleaner and more scalable long-t
 **Context:** Two new sources will enrich the warehouse:
 
 - **Trakt**: film, series and anime tracker. Has a public REST API + CSV exports.
-- **Bandcamp**: music platform. No public user API. Data accessible via the official
-  CSV export in account settings (Settings > Data Export), which produces a
-  `bandcamp-data-{date}.zip` containing `collection.csv` and `wishlist.csv`.
+- **Bandcamp**: music platform. No public user API. No official personal export is
+  available for collection/wishlist data as of 2026.
 
 **Decision:**
 
@@ -490,7 +489,8 @@ maintain. Accepted — the domain separation is cleaner and more scalable long-t
   **internal (undocumented) web API**, reverse-engineered and documented by
   Michael Herger at https://github.com/michaelherger/Bandcamp-API.
 - Auth: session cookie (`Cookie: identity=...`) extracted from a browser session.
-  Relevant endpoint: `POST /api/fancollection/1/collection_items` with `fan_id`.
+  Relevant endpoints: `POST /api/fancollection/1/collection_items` and
+  `POST /api/fancollection/1/wishlist_items` with `fan_id`.
 - Output: full-refresh write to `raw_personal.bandcamp_collection` and
   `raw_personal.bandcamp_wishlist` (same pattern as `spotify_to_bq.py`).
 - The cookie must be refreshed manually when it expires (typically every few weeks).
@@ -552,7 +552,8 @@ is more recent. Acceptable for this personal project.
 
 - **MusicBuddy**: physical collection (CD) and Discogs wishlist.
 - **Spotify**: saved albums (digital).
-- **Bandcamp**: purchased digital albums and wishlist.
+- **Bandcamp**: purchased digital albums and wishlist. Wishlist items are included
+  because adding an album to the wishlist means it has been listened to and liked.
 
 **Decision:** Deduplication is handled in `int_music__unified` via
 `lower(trim(title)) + lower(trim(artist))` matching:
@@ -583,7 +584,7 @@ deferred until duplicate issues are observed in practice.
 |---|---|
 | MusicBuddy | `cd` |
 | Spotify | `digital` |
-| Bandcamp collection | `digital` |
+| Bandcamp collection/wishlist | `digital` |
 | `vinyls.csv` (future manual upload) | `vinyl` |
 
 If an album appears in multiple sources → `media_format` = concatenated formats,

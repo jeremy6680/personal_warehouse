@@ -25,7 +25,9 @@ personal_warehouse/ ← dbt project root (git repo)
 │ │ │ ├── stg_csv**bookbuddy.sql
 │ │ │ ├── stg_csv**letterboxd.sql
 │ │ │ ├── stg_csv**moviebuddy.sql
-│ │ │ └── stg_csv**musicbuddy.sql
+│ │ │ ├── stg_csv**musicbuddy.sql
+│ │ │ ├── stg_csv**bandcamp_collection.sql
+│ │ │ └── stg_csv**bandcamp_wishlist.sql
 │ │ └── spotify/ ← Spotify API source (raw_personal dataset)
 │ │ ├── \_spotify**sources.yml
 │ │ ├── stg_spotify**saved_albums.sql
@@ -40,7 +42,7 @@ personal_warehouse/ ← dbt project root (git repo)
 │ │ │ └── int_movies**unified.sql
 │ │ └── music/
 │ │ ├── int_music**collection.sql ← Orphan — superseded by int_music__unified
-│ │ └── int_music**unified.sql ← MusicBuddy + Spotify union
+│ │ └── int_music**unified.sql ← MusicBuddy + Bandcamp + Spotify union
 │ │
 │ └── mart/
 │ ├── \_mart**models.yml
@@ -51,7 +53,7 @@ personal_warehouse/ ← dbt project root (git repo)
 │ │ ├── mrt_movies**watching_history.sql
 │ │ └── mrt_movies**collection.sql
 │ ├── music/
-│ │ └── mrt_music**collection.sql ← MusicBuddy + Spotify albums
+│ │ └── mrt_music**collection.sql ← listened/liked music library
 │ └── shared/
 │ ├── mrt_media**summary.sql
 │ └── mrt_media**country_index.sql
@@ -68,7 +70,8 @@ personal_warehouse/ ← dbt project root (git repo)
 │
 ├── scripts/
 │ ├── bq_load.sh ← Loads CSV files into raw_personal via bq load
-│ └── spotify_to_bq.py ← Fetches Spotify data via API → writes to raw_personal
+│ ├── spotify_to_bq.py ← Fetches Spotify data via API → writes to raw_personal
+│ └── bandcamp_to_bq.py ← Fetches Bandcamp collection/wishlist via internal API → writes to raw_personal
 │
 ├── dags/
 │ └── spotify_ingest.py ← Airflow DAG: spotify_to_bq.py → dbt build [planned]
@@ -100,7 +103,7 @@ personal_warehouse/ ← dbt project root (git repo)
 
 | Dataset              | Contenu                                                                                                       | Alimenté par              |
 | -------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| `raw_personal`       | Tables brutes de toutes les sources : CSV exports (`bookbuddy`, `goodreads`, etc.) + tables API (`spotify_*`) | `bq load`, scripts Python |
+| `raw_personal`       | Tables brutes de toutes les sources : CSV exports (`bookbuddy`, `goodreads`, etc.) + tables API (`spotify_*`, `bandcamp_*`) | `bq load`, scripts Python |
 | `personal_warehouse` | Vues et tables dbt : `stg_*`, `int_*`, `mrt_*`                                                                | `dbt build`               |
 
 Toutes les sources brutes atterrissent dans `raw_personal`, quelle que soit leur méthode d'ingestion.
@@ -154,10 +157,11 @@ Double underscore `__` separates source/domain from entity.
 - Mart docs: `_mart__models.yml`
 - Seeds docs: `_seeds.yml`
 
-### BigQuery raw tables — Spotify prefix
+### BigQuery raw tables — API prefixes
 
-Spotify tables in `raw_personal` use a `spotify_` prefix to avoid collisions with CSV-backed tables:
-`spotify_saved_albums`, `spotify_saved_tracks`, `spotify_followed_artists`.
+API tables in `raw_personal` use source prefixes to avoid collisions with CSV-backed tables:
+`spotify_saved_albums`, `spotify_saved_tracks`, `spotify_followed_artists`,
+`bandcamp_collection`, `bandcamp_wishlist`.
 
 ### Columns
 
