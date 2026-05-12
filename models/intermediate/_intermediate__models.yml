@@ -81,16 +81,16 @@ models:
 
   - name: int_movies__unified
     description: >
-      Full union of MovieBuddy, Letterboxd, and Trakt, deduplicated to one row
-      per film. Letterboxd and Trakt watch history are aggregated before matching.
-      Matching is on normalized title + release_year. The movie_id is always a
-      title+release_year surrogate so it is consistent regardless of which
-      source(s) a film comes from.
+      Full union of MovieBuddy and Letterboxd, deduplicated to one row per film.
+      Three cases: matched (both sources), moviebuddy_only, letterboxd_only.
+      Letterboxd diary entries are aggregated before matching so that rewatches
+      of the same film are collapsed to one row. Matching is on normalized title
+      + release_year. The movie_id is always a title+release_year surrogate so
+      it is consistent regardless of which source(s) a film comes from.
       Anime excluded — handled in int_anime__unified (ADR-017).
       Genres are normalised to French via the genre_mapping seed (ADR-022),
       applied per-token on the comma-separated genres string.
-      Rating priority is Trakt > Letterboxd > MovieBuddy > manual fallback
-      (ADR-019, ADR-024).
+      Manual ratings applied as last-resort fallback (ADR-024).
       Country name translated to French via the country_name_fr seed (ADR-026).
       country uses a two-tier lookup: director_countries seed on the primary
       director for matched and moviebuddy_only rows; film_countries seed on
@@ -117,8 +117,10 @@ models:
         description: Release year. Sourced from whichever source has the record.
       - name: rating
         description: >
-          Personal rating on a 0–5 scale. Resolved with priority Trakt >
-          Letterboxd > MovieBuddy > manual fallback.
+          Personal rating on a 0–5 scale. Sourced from MovieBuddy when available;
+          falls back to manual_ratings seed if the source rating is null (ADR-024).
+          Null if neither source nor manual rating exists.
+          Letterboxd rating is preserved separately in letterboxd_rating.
         data_tests:
           - dbt_expectations.expect_column_values_to_be_between:
               arguments:
@@ -140,19 +142,7 @@ models:
       - name: last_watched_date
         description: Most recent watch date from Letterboxd. Null for MovieBuddy-only rows.
       - name: watch_count
-        description: Total Trakt plays plus Letterboxd diary entries for this film. Null or 0 for unwatched rows.
-      - name: trakt_rating
-        description: Trakt rating normalized to the warehouse 0.5–5 scale.
-      - name: trakt_rating_raw
-        description: Native Trakt rating on the 1–10 scale.
-      - name: trakt_rated_at
-        description: Timestamp when the film was rated in Trakt.
-      - name: trakt_movie_id
-        description: Trakt movie identifier.
-      - name: trakt_slug
-        description: Trakt movie slug.
-      - name: trakt_imdb_id
-        description: IMDb identifier from Trakt.
+        description: Total Letterboxd diary entries for this film (rewatches counted). Null for MovieBuddy-only rows.
       - name: letterboxd_rating
         description: Rating from the most recent Letterboxd diary entry. Null if unrated or MovieBuddy-only.
       - name: letterboxd_uri
@@ -162,22 +152,6 @@ models:
           Cross-source join strategy.
           'title_year' — matched on normalized title + release_year.
           null — film found in only one source (no cross-source match).
-      - name: source
-        description: Source app or matched source combination that contributed the row.
-        data_tests:
-          - not_null
-          - accepted_values:
-              arguments:
-                values:
-                  [
-                    "trakt_and_letterboxd_and_moviebuddy",
-                    "trakt_and_letterboxd",
-                    "trakt_and_moviebuddy",
-                    "letterboxd_and_moviebuddy",
-                    "trakt",
-                    "letterboxd",
-                    "moviebuddy"
-                  ]
       - name: country
         description: >
           Country of origin for the film, translated to French via the country_name_fr
@@ -185,70 +159,6 @@ models:
           For matched and moviebuddy_only rows: joined from director_countries on the
           primary director. For letterboxd_only rows: joined from film_countries on
           (title, release_year). Null if no matching entry exists in either seed.
-
-  - name: int_anime__unified
-    description: >
-      Anime union from MovieBuddy animated TV shows and Trakt watched or rated
-      shows. Matching is on normalized title + release_year. Rating priority is
-      Trakt > MovieBuddy > manual fallback.
-    config:
-      tags: ["intermediate", "anime"]
-    columns:
-      - name: anime_id
-        description: Surrogate key derived from title + release_year.
-        data_tests:
-          - unique
-          - not_null
-      - name: title
-        description: Anime title.
-        data_tests:
-          - not_null
-      - name: content_type
-        description: Media type, always TV Show.
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: ["TV Show"]
-      - name: release_year
-        description: Release year.
-      - name: rating
-        description: Personal rating on a 0–5 scale, resolved with Trakt priority.
-        data_tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              arguments:
-                min_value: 0
-                max_value: 5
-      - name: genres
-        description: Normalised French genre labels from the genre_mapping seed.
-      - name: runtime_minutes
-        description: Runtime in minutes from MovieBuddy or Trakt.
-      - name: first_watched_date
-        description: First known Trakt watched date at show level.
-      - name: last_watched_date
-        description: Most recent Trakt watched date at show level.
-      - name: watch_count
-        description: Trakt show-level play count.
-      - name: trakt_rating
-        description: Trakt rating normalized to the warehouse 0.5–5 scale.
-      - name: trakt_rating_raw
-        description: Native Trakt rating on the 1–10 scale.
-      - name: trakt_show_id
-        description: Trakt show identifier.
-      - name: status
-        description: Show status from Trakt.
-      - name: network
-        description: Show network from Trakt.
-      - name: source
-        description: Source app or matched source combination that contributed the row.
-        data_tests:
-          - not_null
-          - accepted_values:
-              arguments:
-                values: ["trakt_and_moviebuddy", "trakt", "moviebuddy"]
-      - name: match_type
-        description: "'title_year' when Trakt and MovieBuddy matched; null otherwise."
-      - name: country
-        description: Country from Trakt, translated to French when a mapping exists.
 
   - name: int_music__unified
     description: >

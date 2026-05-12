@@ -69,7 +69,6 @@ movies,Family,Famille
 movies,Familial,Famille
 movies,Kids,Famille
 movies,Thriller,Thriller
-movies,suspense,Thriller
 movies,Romance,Romance
 movies,Crime,Crime
 movies,Fantasy,Fantastique
@@ -80,7 +79,6 @@ movies,Documentary,Documentaire
 movies,Documentaire,Documentaire
 movies,Music,Musique
 movies,Musique,Musique
-movies,musical,Autre
 movies,Mystery,Mystère
 movies,Mystère,Mystère
 movies,Science Fiction,Science-Fiction
@@ -93,10 +91,6 @@ movies,Guerre,Guerre
 movies,Horror,Horreur
 movies,Horreur,Horreur
 movies,TV Movie,
-movies,anime,Animation
-movies,game-show,Autre
-movies,holiday,Autre
-movies,superhero,Action
 music,Rock,Rock
 music,Electronic,Électronique
 music,Pop,Pop

@@ -31,33 +31,6 @@ WITH source_genres AS (
     FROM {{ ref('stg_spotify__followed_artists') }},
         UNNEST(JSON_EXTRACT_ARRAY(genres)) AS raw_genre_json
     WHERE genres IS NOT NULL
-
-    UNION ALL
-
-    SELECT
-        'movies' AS domain,
-        JSON_VALUE(raw_genre_json) AS raw_genre
-    FROM {{ ref('stg_trakt__watched_movies') }},
-        UNNEST(JSON_EXTRACT_ARRAY(genres)) AS raw_genre_json
-    WHERE genres IS NOT NULL
-
-    UNION ALL
-
-    SELECT
-        'movies' AS domain,
-        JSON_VALUE(raw_genre_json) AS raw_genre
-    FROM {{ ref('stg_trakt__watched_shows') }},
-        UNNEST(JSON_EXTRACT_ARRAY(genres)) AS raw_genre_json
-    WHERE genres IS NOT NULL
-
-    UNION ALL
-
-    SELECT
-        'movies' AS domain,
-        JSON_VALUE(raw_genre_json) AS raw_genre
-    FROM {{ ref('stg_trakt__ratings') }},
-        UNNEST(JSON_EXTRACT_ARRAY(genres)) AS raw_genre_json
-    WHERE genres IS NOT NULL
 ),
 
 source_genres_normalised AS (
