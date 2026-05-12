@@ -125,7 +125,7 @@ site) hosted on Netlify (free tier). See ADR-016 for the full architecture ratio
 
 ### Daily refresh automation
 
-- [ ] Generate a Netlify build hook URL
+- [x] Generate a Netlify build hook URL
 - [x] Append `curl -X POST <NETLIFY_BUILD_HOOK_URL>` to `scripts/spotify_launchd.plist`
       (after the `dbt build` step) so the dashboard rebuilds daily at 09:30
       via `scripts/run_spotify_refresh.sh` and `NETLIFY_BUILD_HOOK_URL` in `.env`
