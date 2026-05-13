@@ -350,9 +350,11 @@ models:
       - name: release_year
         description: Release year.
       - name: is_watched
-        description: True if the item has a Trakt watched date.
+        description: True if last_watched_date is not null (i.e. the show appears in Trakt watch history).
       - name: first_watched_date
-        description: First known Trakt watched date at show level.
+        description: >
+          Always null — the Trakt show-level API only exposes last_watched_at;
+          first watch date is not available from this source.
       - name: last_watched_date
         description: Most recent Trakt watched date at show level.
       - name: rating

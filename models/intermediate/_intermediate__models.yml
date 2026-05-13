@@ -228,7 +228,9 @@ models:
       - name: tmdb_id
         description: TMDB identifier from MovieBuddy or Trakt.
       - name: first_watched_date
-        description: First known Trakt watched date at show level.
+        description: >
+          Always null — the Trakt show-level API only exposes last_watched_at;
+          first watch date is not available from this source.
       - name: last_watched_date
         description: Most recent Trakt watched date at show level.
       - name: watch_count
