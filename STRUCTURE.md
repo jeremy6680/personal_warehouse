@@ -34,6 +34,7 @@ personal_warehouse/ ← dbt project root (git repo)
 │ │ │ └── stg_spotify__followed_artists.sql
 │ │ └── trakt/ ← Trakt API source (raw_personal dataset)
 │ │   ├── _trakt__sources.yml
+│ │   ├── _trakt__models.yml
 │ │   ├── _trakt__docs.md
 │ │   ├── stg_trakt__watched_movies.sql
 │ │   ├── stg_trakt__watched_shows.sql
@@ -46,7 +47,6 @@ personal_warehouse/ ← dbt project root (git repo)
 │ │ ├── films/
 │ │ │ └── int_movies__unified.sql
 │ │ ├── music/
-│ │ │ ├── int_music__collection.sql ← Orphan — superseded by int_music__unified
 │ │ │ └── int_music__unified.sql ← MusicBuddy + Bandcamp + Spotify union
 │ │ ├── manga/
 │ │ │ └── int_manga__unified.sql
