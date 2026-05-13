@@ -189,7 +189,8 @@ combined AS (
         COALESCE(mgn.genres_fr, tgn.genres_fr)        AS genres,
         COALESCE(moviebuddy_runtime_minutes, trakt_runtime_minutes) AS runtime_minutes,
         COALESCE(moviebuddy_tmdb_id, trakt_tmdb_id)    AS tmdb_id,
-        DATE(trakt_last_watched_at)                    AS first_watched_date,
+        -- Trakt's show-level API only exposes last_watched_at — first watch date is unavailable.
+        CAST(NULL AS DATE)                             AS first_watched_date,
         DATE(trakt_last_watched_at)                    AS last_watched_date,
         trakt_watch_count                              AS watch_count,
         trakt_rating,

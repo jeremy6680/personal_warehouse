@@ -23,7 +23,7 @@ collection AS (
         title,
         content_type,
         release_year,
-        first_watched_date IS NOT NULL AS is_watched,
+        last_watched_date IS NOT NULL  AS is_watched,
         first_watched_date,
         last_watched_date,
         rating,
