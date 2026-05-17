@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>personal_warehouse — Workflow Visualizer</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#c9d1d9;--muted:#8b949e}
+body{background:var(--bg);color:var(--text);font-family:ui-monospace,'JetBrains Mono',monospace;display:flex;height:100vh;overflow:hidden}
+
+/* SIDEBAR */
+#sidebar{width:270px;min-width:270px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#sb-header{padding:14px 16px;border-bottom:1px solid var(--border)}
+#sb-title{font-size:13px;font-weight:700;color:var(--text)}
+#sb-sub{font-size:10px;color:var(--muted);margin-top:2px}
+#sb-section{padding:9px 16px 5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+#workflow-list{flex:1;overflow-y:auto}
+.wf-btn{display:block;width:100%;padding:9px 14px;background:none;border:none;border-bottom:1px solid #1c2128;text-align:left;cursor:pointer;transition:background .12s;border-left:3px solid transparent}
+.wf-btn:hover{background:rgba(255,255,255,.04)}
+.wf-btn.active{background:rgba(88,166,255,.08)}
+.wf-color{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle;position:relative;top:-1px;flex-shrink:0}
+.wf-name{font-size:12px;font-weight:600;color:var(--text)}
+.wf-short{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.4}
+#clear-btn{display:block;width:calc(100% - 20px);margin:8px 10px;padding:6px;background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;transition:all .12s}
+#clear-btn:hover{border-color:var(--text);color:var(--text)}
+#legend{padding:10px 14px 12px;border-top:1px solid var(--border)}
+#legend-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px}
+.lg-row{display:flex;align-items:center;margin-bottom:3px}
+.lg-swatch{width:10px;height:10px;border-radius:2px;margin-right:7px;flex-shrink:0;border:1px solid}
+.lg-label{font-size:9.5px;color:var(--muted)}
+
+/* MAIN */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#info-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 20px;min-height:64px;display:flex;align-items:center}
+#info-ph{font-size:12px;color:var(--muted)}
+#info-det{display:none}
+#info-name{font-size:14px;font-weight:700;margin-bottom:3px}
+#info-desc{font-size:11.5px;color:var(--muted);line-height:1.55;max-width:680px}
+#info-steps{font-size:10px;color:var(--muted);margin-top:4px;opacity:.7}
+#canvas-wrapper{flex:1;overflow:auto;position:relative}
+#canvas{position:relative}
+#edges-svg{position:absolute;top:0;left:0;pointer-events:none;overflow:visible}
+
+/* LANES */
+.lane{position:absolute;left:0;right:0}
+.lane-lbl{position:absolute;top:5px;left:12px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;opacity:.45}
+
+/* NODES */
+.node{position:absolute;border-radius:5px;border:1.5px solid;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:default;transition:opacity .22s,box-shadow .22s;padding:3px 7px;user-select:none}
+.nl{font-size:10px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ns{font-size:8px;opacity:.6;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+/* Layer themes */
+.l-sources     {background:#101b2e;border-color:#1f3a62;color:#79b8ff}
+.l-scripts     {background:#101e10;border-color:#1f4020;color:#7ee787}
+.l-raw         {background:#160e30;border-color:#2e1d5e;color:#c79dff}
+.l-seeds       {background:#1e1208;border-color:#4a2a10;color:#ffa657}
+.l-staging     {background:#0e1a1a;border-color:#1a3c3c;color:#39d353}
+.l-intermediate{background:#1a1708;border-color:#3c3515;color:#e3b341}
+.l-mart        {background:#1c0e0e;border-color:#3e1c1c;color:#f78166}
+.l-output      {background:#0e0e22;border-color:#1e1e48;color:#79b8ff}
+
+/* States */
+.node.dimmed{opacity:.1}
+.node.active{opacity:1}
+.node.active.l-sources     {border-color:#79b8ff;box-shadow:0 0 12px rgba(121,184,255,.5)}
+.node.active.l-scripts     {border-color:#7ee787;box-shadow:0 0 12px rgba(126,231,135,.5)}
+.node.active.l-raw         {border-color:#c79dff;box-shadow:0 0 12px rgba(199,157,255,.5)}
+.node.active.l-seeds       {border-color:#ffa657;box-shadow:0 0 12px rgba(255,166,87,.5)}
+.node.active.l-staging     {border-color:#39d353;box-shadow:0 0 12px rgba(57,211,83,.5)}
+.node.active.l-intermediate{border-color:#e3b341;box-shadow:0 0 12px rgba(227,179,65,.5)}
+.node.active.l-mart        {border-color:#f78166;box-shadow:0 0 12px rgba(247,129,102,.5)}
+.node.active.l-output      {border-color:#79b8ff;box-shadow:0 0 12px rgba(121,184,255,.5)}
+
+/* Tooltip */
+#tooltip{position:fixed;background:#1c2128;border:1px solid #444c56;border-radius:5px;padding:7px 10px;font-size:10.5px;color:var(--text);pointer-events:none;display:none;z-index:100;max-width:280px;line-height:1.5}
+#tooltip strong{color:#58a6ff;display:block;margin-bottom:2px}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div id="sb-header">
+    <div id="sb-title">personal_warehouse</div>
+    <div id="sb-sub">Data Flow Visualizer</div>
+  </div>
+  <div id="sb-section">Workflows</div>
+  <div id="workflow-list"></div>
+  <button id="clear-btn">✕ Clear selection</button>
+  <div id="legend">
+    <div id="legend-title">Layers</div>
+  </div>
+</div>
+<div id="main">
+  <div id="info-bar">
+    <div>
+      <div id="info-ph">← Select a workflow to highlight the data path</div>
+      <div id="info-det">
+        <div id="info-name"></div>
+        <div id="info-desc"></div>
+        <div id="info-steps"></div>
+      </div>
+    </div>
+  </div>
+  <div id="canvas-wrapper">
+    <div id="canvas">
+      <svg id="edges-svg">
+        <defs>
+          <marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <path d="M0,0 L7,3.5 L0,7 Z" fill="#444c56"/>
+          </marker>
+          <marker id="arr-active" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <path id="arr-active-path" d="M0,0 L7,3.5 L0,7 Z" fill="#58a6ff"/>
+          </marker>
+        </defs>
+      </svg>
+      <div id="nodes-layer"></div>
+    </div>
+  </div>
+</div>
+<div id="tooltip"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════════════════
+const DATA = {
+  layers: [
+    {id:"sources",      label:"External Sources",           bg:"#101b2e", tc:"#79b8ff"},
+    {id:"scripts",      label:"Ingestion Scripts",          bg:"#101e10", tc:"#7ee787"},
+    {id:"raw",          label:"BigQuery — raw_personal",    bg:"#160e30", tc:"#c79dff"},
+    {id:"seeds",        label:"dbt Seeds  (dbt seed)",      bg:"#1e1208", tc:"#ffa657"},
+    {id:"staging",      label:"dbt Staging — views  (personal_warehouse dataset)", bg:"#0e1a1a", tc:"#39d353"},
+    {id:"intermediate", label:"dbt Intermediate — views  (personal_warehouse dataset)", bg:"#1a1708", tc:"#e3b341"},
+    {id:"mart",         label:"dbt Mart — tables  (personal_warehouse dataset)", bg:"#1c0e0e", tc:"#f78166"},
+    {id:"output",       label:"Dashboard & Orchestration",  bg:"#0e0e22", tc:"#79b8ff"},
+  ],
+  nodes: [
+    // sources
+    {id:"goodreads",    label:"Goodreads",       sub:"CSV export",          layer:"sources"},
+    {id:"bookbuddy",    label:"BookBuddy",       sub:"CSV export",          layer:"sources"},
+    {id:"letterboxd",   label:"Letterboxd",      sub:"CSV export",          layer:"sources"},
+    {id:"moviebuddy",   label:"MovieBuddy",      sub:"CSV export",          layer:"sources"},
+    {id:"musicbuddy",   label:"MusicBuddy",      sub:"CSV export",          layer:"sources"},
+    {id:"spotify_api",  label:"Spotify API",     sub:"Web API / OAuth2",    layer:"sources"},
+    {id:"bandcamp_api", label:"Bandcamp API",    sub:"Internal API (cookie)",layer:"sources"},
+    {id:"trakt_api",    label:"Trakt API",       sub:"REST v2 / API key",   layer:"sources"},
+    // scripts
+    {id:"bq_load",          label:"bq_load.sh",             sub:"manual run",            layer:"scripts"},
+    {id:"launchd",          label:"launchd",                sub:"daily 09:30 Paris",     layer:"scripts"},
+    {id:"run_refresh",      label:"run_spotify_refresh.sh", sub:"shell orchestrator",    layer:"scripts"},
+    {id:"spotify_script",   label:"spotify_to_bq.py",       sub:"Spotipy + BQ client",  layer:"scripts"},
+    {id:"bandcamp_script",  label:"bandcamp_to_bq.py",      sub:"requests + BQ client", layer:"scripts"},
+    {id:"trakt_script",     label:"trakt_to_bq.py",         sub:"requests + BQ client", layer:"scripts"},
+    // raw
+    {id:"raw_personal", label:"raw_personal", sub:"BigQuery dataset", layer:"raw"},
+    // seeds
+    {id:"seed_author",         label:"author_countries",         sub:"seeds/books/",      layer:"seeds"},
+    {id:"seed_director",       label:"director_countries",       sub:"seeds/films/",      layer:"seeds"},
+    {id:"seed_film_countries", label:"film_countries",           sub:"seeds/films/",      layer:"seeds"},
+    {id:"seed_artist",         label:"artist_countries",         sub:"seeds/music/",      layer:"seeds"},
+    {id:"seed_manga_author",   label:"manga_author_countries",   sub:"seeds/manga/",      layer:"seeds"},
+    {id:"seed_anime_director", label:"anime_director_countries", sub:"seeds/anime/",      layer:"seeds"},
+    {id:"seed_genre_mapping",  label:"genre_mapping",            sub:"seeds/shared/",     layer:"seeds"},
+    {id:"seed_manual_ratings", label:"manual_ratings",           sub:"seeds/shared/",     layer:"seeds"},
+    {id:"seed_country_iso",    label:"country_iso_codes",        sub:"seeds/geography/",  layer:"seeds"},
+    // staging
+    {id:"stg_goodreads",       label:"stg_csv__goodreads",            sub:"staging/csv/",     layer:"staging"},
+    {id:"stg_bookbuddy",       label:"stg_csv__bookbuddy",            sub:"staging/csv/",     layer:"staging"},
+    {id:"stg_letterboxd",      label:"stg_csv__letterboxd",           sub:"staging/csv/",     layer:"staging"},
+    {id:"stg_moviebuddy",      label:"stg_csv__moviebuddy",           sub:"staging/csv/",     layer:"staging"},
+    {id:"stg_musicbuddy",      label:"stg_csv__musicbuddy",           sub:"staging/csv/",     layer:"staging"},
+    {id:"stg_bandcamp_col",    label:"stg_csv__bandcamp_collection",  sub:"staging/csv/",     layer:"staging"},
+    {id:"stg_bandcamp_wish",   label:"stg_csv__bandcamp_wishlist",    sub:"staging/csv/",     layer:"staging"},
+    {id:"stg_spotify_albums",  label:"stg_spotify__saved_albums",     sub:"staging/spotify/", layer:"staging"},
+    {id:"stg_spotify_tracks",  label:"stg_spotify__saved_tracks",     sub:"staging/spotify/", layer:"staging"},
+    {id:"stg_spotify_artists", label:"stg_spotify__followed_artists", sub:"staging/spotify/", layer:"staging"},
+    {id:"stg_trakt_movies",    label:"stg_trakt__watched_movies",     sub:"staging/trakt/",   layer:"staging"},
+    {id:"stg_trakt_shows",     label:"stg_trakt__watched_shows",      sub:"staging/trakt/",   layer:"staging"},
+    {id:"stg_trakt_ratings",   label:"stg_trakt__ratings",            sub:"staging/trakt/",   layer:"staging"},
+    // intermediate
+    {id:"int_books",  label:"int_books__unified",  sub:"intermediate/books/", layer:"intermediate"},
+    {id:"int_movies", label:"int_movies__unified", sub:"intermediate/films/", layer:"intermediate"},
+    {id:"int_music",  label:"int_music__unified",  sub:"intermediate/music/", layer:"intermediate"},
+    {id:"int_manga",  label:"int_manga__unified",  sub:"intermediate/manga/", layer:"intermediate"},
+    {id:"int_anime",  label:"int_anime__unified",  sub:"intermediate/anime/", layer:"intermediate"},
+    // mart
+    {id:"mrt_books",   label:"mrt_books__collection",    sub:"mart/books/",        layer:"mart"},
+    {id:"mrt_movies",  label:"mrt_movies__collection",   sub:"mart/films/",        layer:"mart"},
+    {id:"mrt_music",   label:"mrt_music__collection",    sub:"mart/music/",        layer:"mart"},
+    {id:"mrt_manga",   label:"mrt_manga__collection",    sub:"mart/manga/",        layer:"mart"},
+    {id:"mrt_anime",   label:"mrt_anime__collection",    sub:"mart/anime/",        layer:"mart"},
+    {id:"mrt_summary", label:"mrt_media__summary",       sub:"mart/cross_domain/", layer:"mart"},
+    {id:"mrt_country", label:"mrt_media__country_index", sub:"mart/cross_domain/", layer:"mart"},
+    // output
+    {id:"netlify_hook", label:"Netlify Build Hook", sub:"POST trigger",                       layer:"output"},
+    {id:"evidence_dev", label:"Evidence.dev",       sub:"personal-warehouse-dashboard",       layer:"output"},
+    {id:"netlify_site", label:"Netlify",            sub:"mediatheque.jeremymarchandeau.com",  layer:"output"},
+  ],
+  workflows: [
+    {
+      id:"daily_music", name:"Daily Music Refresh", color:"#6366f1",
+      short:"Spotify ingestion → music models → dashboard rebuild",
+      desc:"Triggered daily at 09:30 Paris time by macOS launchd. Fetches saved albums, tracks, and followed artists from the Spotify Web API via Spotipy. Writes full-refresh to BigQuery raw_personal, runs dbt for the music domain, then fires the Netlify build hook to rebuild the Evidence.dev dashboard.",
+      steps:[
+        {from:"launchd",           to:"run_refresh",        label:"executes shell script"},
+        {from:"run_refresh",       to:"spotify_script",     label:"python scripts/spotify_to_bq.py"},
+        {from:"spotify_api",       to:"spotify_script",     label:"OAuth2 via Spotipy — albums, tracks, artists"},
+        {from:"spotify_script",    to:"raw_personal",       label:"WRITE_TRUNCATE → spotify_saved_albums/tracks/followed_artists"},
+        {from:"raw_personal",      to:"stg_spotify_albums", label:"source('spotify','spotify_saved_albums')"},
+        {from:"raw_personal",      to:"stg_spotify_tracks", label:"source('spotify','spotify_saved_tracks')"},
+        {from:"raw_personal",      to:"stg_spotify_artists",label:"source('spotify','spotify_followed_artists')"},
+        {from:"stg_spotify_albums", to:"int_music",         label:"ref() — album_id, title, artist, release_year, total_tracks"},
+        {from:"stg_spotify_tracks", to:"int_music",         label:"ref() — track_id, album_id, artists (unused for now)"},
+        {from:"stg_spotify_artists",to:"int_music",         label:"ref() — genres join for album enrichment (album.genres is empty in API)"},
+        {from:"seed_artist",        to:"int_music",         label:"ref() — artist → country mapping"},
+        {from:"seed_genre_mapping", to:"int_music",         label:"ref() — raw_genre → normalized_genre"},
+        {from:"seed_manual_ratings",to:"int_music",         label:"ref() — manual rating overrides"},
+        {from:"int_music",          to:"mrt_music",         label:"ref() — source_name, spotify_album_id, spotify_added_at"},
+        {from:"int_music",          to:"mrt_summary",       label:"ref() — domain='music' aggregate row"},
+        {from:"int_music",          to:"mrt_country",       label:"ref() — (country, 'music', album) rows"},
+        {from:"run_refresh",        to:"netlify_hook",       label:"curl -X POST $NETLIFY_BUILD_HOOK_URL"},
+        {from:"netlify_hook",       to:"evidence_dev",       label:"triggers npm run build — BigQuery queries at build time"},
+        {from:"evidence_dev",       to:"netlify_site",       label:"static site deployed to CDN"},
+      ]
+    },
+    {
+      id:"refresh_books", name:"Refresh Book Library", color:"#22c55e",
+      short:"Export Goodreads + BookBuddy CSVs → books models",
+      desc:"Manual process: export CSVs from Goodreads (goodreads.com account export) and BookBuddy iOS app. Drop them in data/. Run bq_load.sh to replace the raw BigQuery tables. Then run dbt build for the books domain. Goodreads provides read history; BookBuddy provides richer metadata and collection scope. They are merged in int_books__unified via ISBN-first matching with title+author fallback.",
+      steps:[
+        {from:"goodreads",    to:"bq_load",        label:"data/goodreads.csv"},
+        {from:"bookbuddy",    to:"bq_load",        label:"data/bookbuddy.csv"},
+        {from:"bq_load",      to:"raw_personal",   label:"bq load --replace --autodetect raw_personal.goodreads/.bookbuddy"},
+        {from:"raw_personal", to:"stg_goodreads",  label:"source('csv','goodreads') — book_id, title, author, rating, isbn"},
+        {from:"raw_personal", to:"stg_bookbuddy",  label:"source('csv','bookbuddy') — book_id, genre, category, isbn, tags"},
+        {from:"stg_goodreads",    to:"int_books",  label:"ref() — reading history, dates, goodreads_rating"},
+        {from:"stg_bookbuddy",    to:"int_books",  label:"ref() — collection metadata, bookbuddy_rating"},
+        {from:"seed_author",      to:"int_books",  label:"ref() — author → country lookup (case-insensitive join)"},
+        {from:"seed_genre_mapping",to:"int_books", label:"ref() — raw_genre → normalized_genre"},
+        {from:"seed_manual_ratings",to:"int_books",label:"ref() — manual rating overrides (COALESCE priority)"},
+        {from:"int_books",  to:"mrt_books",        label:"ref() — full collection: read + unread, merged metadata"},
+        {from:"int_books",  to:"mrt_summary",      label:"ref() — domain='books' counts + avg_rating"},
+        {from:"int_books",  to:"mrt_country",      label:"ref() — (country, 'books', title) rows"},
+      ]
+    },
+    {
+      id:"refresh_movies", name:"Refresh Movie Library", color:"#f59e0b",
+      short:"Export Letterboxd + MovieBuddy CSVs → film models",
+      desc:"Manual process: export CSVs from Letterboxd (diary export) and MovieBuddy iOS app. Run bq_load.sh. Letterboxd rewatches are aggregated to one row per film before matching. Title+year matching merges the two sources. Trakt supplements with additional watch history and ratings (COALESCE: trakt_rating > letterboxd_rating > moviebuddy_rating).",
+      steps:[
+        {from:"letterboxd",   to:"bq_load",        label:"data/letterboxd.csv"},
+        {from:"moviebuddy",   to:"bq_load",         label:"data/moviebuddy.csv"},
+        {from:"bq_load",      to:"raw_personal",    label:"bq load --replace raw_personal.letterboxd / .moviebuddy"},
+        {from:"raw_personal", to:"stg_letterboxd",  label:"source('csv','letterboxd') — watched_date, film_name, release_year, rating"},
+        {from:"raw_personal", to:"stg_moviebuddy",  label:"source('csv','moviebuddy') — title, tmdb_id, directors, genres, runtime"},
+        {from:"stg_letterboxd",to:"int_movies",     label:"ref() — aggregated rewatches → one row per film"},
+        {from:"stg_moviebuddy",to:"int_movies",     label:"ref() — title+year match with Letterboxd"},
+        {from:"seed_director",    to:"int_movies",  label:"ref() — director → country (primary lookup)"},
+        {from:"seed_film_countries",to:"int_movies",label:"ref() — title+year → country (Letterboxd-only fallback)"},
+        {from:"seed_genre_mapping",to:"int_movies", label:"ref() — normalized_genre"},
+        {from:"seed_manual_ratings",to:"int_movies",label:"ref() — manual rating overrides"},
+        {from:"int_movies", to:"mrt_movies",        label:"ref() — full collection: watched + wishlist, source column"},
+        {from:"int_movies", to:"mrt_summary",       label:"ref() — domain='films'"},
+        {from:"int_movies", to:"mrt_country",       label:"ref() — (country, 'films', title) rows"},
+      ]
+    },
+    {
+      id:"refresh_trakt", name:"Refresh Trakt Data", color:"#ec4899",
+      short:"Trakt API → watched movies + shows + ratings",
+      desc:"Fetches watch history and ratings from the Trakt API v2 using an API key (no OAuth needed for public profiles). Three tables: watched_movies, watched_shows, ratings. Trakt is a third film source (merged into int_movies__unified) and the primary watch-history source for the anime domain.",
+      steps:[
+        {from:"trakt_api",     to:"trakt_script",     label:"GET /users/{username}/watched/movies|shows, /ratings — API key auth"},
+        {from:"trakt_script",  to:"raw_personal",     label:"WRITE_TRUNCATE → trakt_watched_movies, trakt_watched_shows, trakt_ratings"},
+        {from:"raw_personal",  to:"stg_trakt_movies", label:"source('trakt','trakt_watched_movies')"},
+        {from:"raw_personal",  to:"stg_trakt_shows",  label:"source('trakt','trakt_watched_shows')"},
+        {from:"raw_personal",  to:"stg_trakt_ratings",label:"source('trakt','trakt_ratings')"},
+        {from:"stg_trakt_movies", to:"int_movies",    label:"ref() — matched by lower(title)+year; COALESCE(trakt_rating, letterboxd_rating)"},
+        {from:"stg_trakt_ratings",to:"int_movies",    label:"ref() — ratings joined by (media_type='movie', title, year)"},
+        {from:"stg_trakt_shows",  to:"int_anime",     label:"ref() — filtered: Animation genre TV shows only"},
+        {from:"stg_trakt_ratings",to:"int_anime",     label:"ref() — anime show ratings"},
+        {from:"stg_moviebuddy",   to:"int_anime",     label:"ref() — filtered: content_type='TV Show' AND genres LIKE '%Animation%'"},
+        {from:"seed_anime_director",to:"int_anime",   label:"ref() — director → country"},
+        {from:"seed_genre_mapping", to:"int_anime",   label:"ref() — normalized_genre"},
+        {from:"int_movies", to:"mrt_movies",          label:"ref()"},
+        {from:"int_anime",  to:"mrt_anime",           label:"ref()"},
+        {from:"int_anime",  to:"mrt_summary",         label:"ref() — domain='anime'"},
+        {from:"int_anime",  to:"mrt_country",         label:"ref()"},
+      ]
+    },
+    {
+      id:"refresh_bandcamp", name:"Refresh Bandcamp", color:"#06b6d4",
+      short:"Bandcamp internal API → music models",
+      desc:"Fetches Bandcamp collection and wishlist via Bandcamp's undocumented internal API using a session cookie (BANDCAMP_IDENTITY_COOKIE) and fan_id. Bandcamp data flows into int_music__unified alongside MusicBuddy and Spotify, with deduplication by title+artist and media_format concatenation.",
+      steps:[
+        {from:"bandcamp_api",    to:"bandcamp_script",  label:"POST /api/fancollection/1/collection_items — paginated via older_than_token"},
+        {from:"bandcamp_script", to:"raw_personal",     label:"WRITE_TRUNCATE → bandcamp_collection, bandcamp_wishlist"},
+        {from:"raw_personal",    to:"stg_bandcamp_col", label:"source('csv','bandcamp_collection')"},
+        {from:"raw_personal",    to:"stg_bandcamp_wish",label:"source('csv','bandcamp_wishlist')"},
+        {from:"stg_bandcamp_col", to:"int_music",       label:"ref() — title, artist, media_format='digital'"},
+        {from:"stg_bandcamp_wish",to:"int_music",       label:"ref() — wishlist flag, not-yet-owned items"},
+        {from:"seed_artist",      to:"int_music",       label:"ref() — artist → country"},
+        {from:"seed_genre_mapping",to:"int_music",      label:"ref() — normalized_genre"},
+        {from:"int_music",  to:"mrt_music",             label:"ref() — source_name='bandcamp'"},
+        {from:"int_music",  to:"mrt_summary",           label:"ref() — domain='music'"},
+        {from:"int_music",  to:"mrt_country",           label:"ref()"},
+      ]
+    },
+    {
+      id:"refresh_musicbuddy", name:"Refresh MusicBuddy CSV", color:"#8b5cf6",
+      short:"MusicBuddy (Discogs-backed) CSV → music models",
+      desc:"Manual process: export CSV from MusicBuddy iOS app (backed by Discogs). MusicBuddy is the primary music source with richest metadata (Discogs release ID, vinyl/CD format). Discogs disambiguation suffixes like '(2)' are stripped in intermediate. Merged with Bandcamp and Spotify in int_music__unified.",
+      steps:[
+        {from:"musicbuddy",  to:"bq_load",        label:"data/musicbuddy.csv"},
+        {from:"bq_load",     to:"raw_personal",   label:"bq load --replace raw_personal.musicbuddy"},
+        {from:"raw_personal",to:"stg_musicbuddy", label:"source('csv','musicbuddy') — album_id, discogs_release_id, media_format"},
+        {from:"stg_musicbuddy",    to:"int_music",label:"ref() — primary source; priority over Bandcamp and Spotify for metadata"},
+        {from:"seed_artist",       to:"int_music",label:"ref() — artist → country"},
+        {from:"seed_genre_mapping",to:"int_music",label:"ref() — genre normalization"},
+        {from:"seed_manual_ratings",to:"int_music",label:"ref() — manual rating overrides"},
+        {from:"int_music",   to:"mrt_music",      label:"ref() — source_name='musicbuddy', media_format (vinyl/cd/digital)"},
+        {from:"int_music",   to:"mrt_summary",    label:"ref() — domain='music'"},
+        {from:"int_music",   to:"mrt_country",    label:"ref()"},
+      ]
+    },
+    {
+      id:"refresh_manga", name:"Refresh Manga Collection", color:"#f472b6",
+      short:"BookBuddy CSV (category='Manga') → manga models",
+      desc:"Manga items live inside BookBuddy with category='Manga'. They are filtered out of int_books__unified (books excludes manga) and routed to int_manga__unified. No separate source file is needed — same bookbuddy.csv, different filter in intermediate.",
+      steps:[
+        {from:"bookbuddy",   to:"bq_load",        label:"data/bookbuddy.csv (contains manga rows with category='Manga')"},
+        {from:"bq_load",     to:"raw_personal",   label:"bq load --replace raw_personal.bookbuddy"},
+        {from:"raw_personal",to:"stg_bookbuddy",  label:"source('csv','bookbuddy')"},
+        {from:"stg_bookbuddy",     to:"int_manga",label:"ref() — WHERE category = 'Manga'"},
+        {from:"seed_manga_author", to:"int_manga",label:"ref() — author → country (separate seed to avoid name collision)"},
+        {from:"seed_genre_mapping",to:"int_manga",label:"ref() — normalized_genre"},
+        {from:"int_manga",  to:"mrt_manga",       label:"ref()"},
+        {from:"int_manga",  to:"mrt_summary",     label:"ref() — domain='manga'"},
+        {from:"int_manga",  to:"mrt_country",     label:"ref()"},
+      ]
+    },
+    {
+      id:"update_seeds", name:"Update Country / Genre Seeds", color:"#f97316",
+      short:"Edit seed CSVs → dbt seed → rebuild all intermediates",
+      desc:"When a new artist/author/director needs a country mapping, or genre normalization needs expanding, the relevant CSV in seeds/ is edited manually and re-loaded with 'dbt seed'. All downstream intermediates and marts are rebuilt. country_iso_codes powers the choropleth world map (ISO 3166-1 alpha-3).",
+      steps:[
+        {from:"seed_author",        to:"int_books",  label:"dbt seed → ref() — author → country (case-insensitive)"},
+        {from:"seed_genre_mapping", to:"int_books",  label:"dbt seed → ref()"},
+        {from:"seed_manual_ratings",to:"int_books",  label:"dbt seed → ref()"},
+        {from:"seed_director",      to:"int_movies", label:"dbt seed → ref()"},
+        {from:"seed_film_countries",to:"int_movies", label:"dbt seed → ref() — Letterboxd-only fallback"},
+        {from:"seed_genre_mapping", to:"int_movies", label:"dbt seed → ref()"},
+        {from:"seed_manual_ratings",to:"int_movies", label:"dbt seed → ref()"},
+        {from:"seed_artist",        to:"int_music",  label:"dbt seed → ref()"},
+        {from:"seed_genre_mapping", to:"int_music",  label:"dbt seed → ref()"},
+        {from:"seed_manual_ratings",to:"int_music",  label:"dbt seed → ref()"},
+        {from:"seed_manga_author",  to:"int_manga",  label:"dbt seed → ref()"},
+        {from:"seed_genre_mapping", to:"int_manga",  label:"dbt seed → ref()"},
+        {from:"seed_anime_director",to:"int_anime",  label:"dbt seed → ref()"},
+        {from:"seed_country_iso",   to:"mrt_country",label:"dbt seed → ref() — iso_alpha3 for choropleth"},
+        {from:"int_books",   to:"mrt_books",         label:"ref()"},
+        {from:"int_movies",  to:"mrt_movies",        label:"ref()"},
+        {from:"int_music",   to:"mrt_music",         label:"ref()"},
+        {from:"int_manga",   to:"mrt_manga",         label:"ref()"},
+        {from:"int_anime",   to:"mrt_anime",         label:"ref()"},
+        {from:"int_books",   to:"mrt_country",       label:"ref()"},
+        {from:"int_movies",  to:"mrt_country",       label:"ref()"},
+        {from:"int_music",   to:"mrt_country",       label:"ref()"},
+        {from:"int_manga",   to:"mrt_country",       label:"ref()"},
+        {from:"int_anime",   to:"mrt_country",       label:"ref()"},
+      ]
+    },
+    {
+      id:"full_build", name:"Full dbt Build", color:"#14b8a6",
+      short:"dbt build — all models, all domains, all tests",
+      desc:"Rebuilds the complete pipeline: all 13 staging views, all 5 intermediate views, all 7 mart tables, plus all generic and singular tests. Run after any multi-domain data refresh or schema change. Equivalent to: dbt build (no selector).",
+      steps:[
+        {from:"raw_personal",  to:"stg_goodreads",       label:"source()"},
+        {from:"raw_personal",  to:"stg_bookbuddy",       label:"source()"},
+        {from:"raw_personal",  to:"stg_letterboxd",      label:"source()"},
+        {from:"raw_personal",  to:"stg_moviebuddy",      label:"source()"},
+        {from:"raw_personal",  to:"stg_musicbuddy",      label:"source()"},
+        {from:"raw_personal",  to:"stg_bandcamp_col",    label:"source()"},
+        {from:"raw_personal",  to:"stg_bandcamp_wish",   label:"source()"},
+        {from:"raw_personal",  to:"stg_spotify_albums",  label:"source()"},
+        {from:"raw_personal",  to:"stg_spotify_tracks",  label:"source()"},
+        {from:"raw_personal",  to:"stg_spotify_artists", label:"source()"},
+        {from:"raw_personal",  to:"stg_trakt_movies",    label:"source()"},
+        {from:"raw_personal",  to:"stg_trakt_shows",     label:"source()"},
+        {from:"raw_personal",  to:"stg_trakt_ratings",   label:"source()"},
+        {from:"stg_goodreads",       to:"int_books",     label:"ref()"},
+        {from:"stg_bookbuddy",       to:"int_books",     label:"ref()"},
+        {from:"stg_bookbuddy",       to:"int_manga",     label:"ref() — category='Manga'"},
+        {from:"stg_letterboxd",      to:"int_movies",    label:"ref()"},
+        {from:"stg_moviebuddy",      to:"int_movies",    label:"ref()"},
+        {from:"stg_moviebuddy",      to:"int_anime",     label:"ref() — Animation TV shows"},
+        {from:"stg_musicbuddy",      to:"int_music",     label:"ref()"},
+        {from:"stg_bandcamp_col",    to:"int_music",     label:"ref()"},
+        {from:"stg_bandcamp_wish",   to:"int_music",     label:"ref()"},
+        {from:"stg_spotify_albums",  to:"int_music",     label:"ref()"},
+        {from:"stg_spotify_tracks",  to:"int_music",     label:"ref()"},
+        {from:"stg_spotify_artists", to:"int_music",     label:"ref()"},
+        {from:"stg_trakt_movies",    to:"int_movies",    label:"ref()"},
+        {from:"stg_trakt_shows",     to:"int_anime",     label:"ref()"},
+        {from:"stg_trakt_ratings",   to:"int_movies",    label:"ref()"},
+        {from:"stg_trakt_ratings",   to:"int_anime",     label:"ref()"},
+        {from:"int_books",   to:"mrt_books",             label:"ref()"},
+        {from:"int_movies",  to:"mrt_movies",            label:"ref()"},
+        {from:"int_music",   to:"mrt_music",             label:"ref()"},
+        {from:"int_manga",   to:"mrt_manga",             label:"ref()"},
+        {from:"int_anime",   to:"mrt_anime",             label:"ref()"},
+        {from:"int_books",   to:"mrt_summary",           label:"ref()"},
+        {from:"int_movies",  to:"mrt_summary",           label:"ref()"},
+        {from:"int_music",   to:"mrt_summary",           label:"ref()"},
+        {from:"int_manga",   to:"mrt_summary",           label:"ref()"},
+        {from:"int_anime",   to:"mrt_summary",           label:"ref()"},
+        {from:"int_books",   to:"mrt_country",           label:"ref()"},
+        {from:"int_movies",  to:"mrt_country",           label:"ref()"},
+        {from:"int_music",   to:"mrt_country",           label:"ref()"},
+        {from:"int_manga",   to:"mrt_country",           label:"ref()"},
+        {from:"int_anime",   to:"mrt_country",           label:"ref()"},
+        {from:"seed_country_iso", to:"mrt_country",      label:"ref()"},
+      ]
+    },
+    {
+      id:"dashboard_deploy", name:"Dashboard Deploy", color:"#a855f7",
+      short:"Evidence.dev build → Netlify → live site",
+      desc:"Evidence.dev queries BigQuery mart tables at build time (via the BigQuery connector with service account credentials stored as Netlify env vars) and generates a static site with 9 pages in French. Deployed to mediatheque.jeremymarchandeau.com via Netlify CDN.",
+      steps:[
+        {from:"mrt_books",    to:"evidence_dev",  label:"BigQuery SQL at build time — /books/collection, /books/stats"},
+        {from:"mrt_movies",   to:"evidence_dev",  label:"BigQuery SQL — /movies/collection, /movies/stats"},
+        {from:"mrt_music",    to:"evidence_dev",  label:"BigQuery SQL — /music/collection, /music/stats"},
+        {from:"mrt_manga",    to:"evidence_dev",  label:"BigQuery SQL — /manga/collection, /manga/stats"},
+        {from:"mrt_anime",    to:"evidence_dev",  label:"BigQuery SQL — /anime/collection, /anime/stats"},
+        {from:"mrt_summary",  to:"evidence_dev",  label:"BigQuery SQL — /summary cross-domain KPIs"},
+        {from:"mrt_country",  to:"evidence_dev",  label:"BigQuery SQL — /map choropleth (iso_alpha3 + AreaMap)"},
+        {from:"netlify_hook", to:"evidence_dev",  label:"POST triggers npm run build"},
+        {from:"evidence_dev", to:"netlify_site",  label:"static site deployed to Netlify CDN"},
+      ]
+    },
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LAYOUT CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+const NODE_W   = 160;
+const NODE_H   = 50;
+const LAYER_H  = 94;
+const PAD_X    = 48;
+const PAD_Y    = 20;
+const LABEL_H  = 18; // space reserved for lane label above nodes
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPUTE POSITIONS
+// ═══════════════════════════════════════════════════════════════════════════
+function computeLayout() {
+  const layerIds = DATA.layers.map(l => l.id);
+  const byLayer  = {};
+  layerIds.forEach(id => byLayer[id] = []);
+  DATA.nodes.forEach(n => byLayer[n.layer].push(n));
+
+  const maxCount = Math.max(...layerIds.map(id => byLayer[id].length));
+  const CANVAS_W = Math.max(2240, PAD_X * 2 + maxCount * (NODE_W + 14));
+  const CANVAS_H = PAD_Y * 2 + DATA.layers.length * LAYER_H + 10;
+
+  layerIds.forEach((layerId, li) => {
+    const nodes = byLayer[layerId];
+    const laneY = PAD_Y + li * LAYER_H;
+    const n     = nodes.length;
+    const totalNodeW = n * NODE_W;
+    const totalGap   = CANVAS_W - 2 * PAD_X - totalNodeW;
+    const gap        = totalGap / (n + 1);
+    nodes.forEach((node, i) => {
+      node._x  = PAD_X + gap * (i + 1) + NODE_W * i;
+      node._y  = laneY + LABEL_H + (LAYER_H - LABEL_H - NODE_H) / 2;
+      node._cx = node._x + NODE_W / 2;
+      node._cy = node._y + NODE_H / 2;
+      node._laneY = laneY;
+    });
+  });
+
+  return { CANVAS_W, CANVAS_H };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER LANES
+// ═══════════════════════════════════════════════════════════════════════════
+function renderLanes(CANVAS_W, CANVAS_H) {
+  const canvas = document.getElementById('canvas');
+  canvas.style.width  = CANVAS_W + 'px';
+  canvas.style.height = CANVAS_H + 'px';
+
+  const svg = document.getElementById('edges-svg');
+  svg.setAttribute('width',  CANVAS_W);
+  svg.setAttribute('height', CANVAS_H);
+
+  DATA.layers.forEach((layer, li) => {
+    const laneY = PAD_Y + li * LAYER_H;
+    const div   = document.createElement('div');
+    div.className = 'lane';
+    div.style.cssText = `top:${laneY}px;height:${LAYER_H}px;background:${layer.bg}22;border-top:1px solid ${layer.bg}88`;
+    const lbl = document.createElement('div');
+    lbl.className = 'lane-lbl';
+    lbl.style.color = layer.tc;
+    lbl.textContent = layer.label;
+    div.appendChild(lbl);
+    canvas.appendChild(div);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER NODES
+// ═══════════════════════════════════════════════════════════════════════════
+function renderNodes() {
+  const container = document.getElementById('nodes-layer');
+  DATA.nodes.forEach(node => {
+    const div = document.createElement('div');
+    div.id = 'node-' + node.id;
+    div.className = 'node l-' + node.layer;
+    div.style.cssText = `left:${node._x}px;top:${node._y}px;width:${NODE_W}px;height:${NODE_H}px`;
+
+    const lbl = document.createElement('div');
+    lbl.className = 'nl';
+    lbl.title = node.label;
+    lbl.textContent = node.label;
+    div.appendChild(lbl);
+
+    if (node.sub) {
+      const sub = document.createElement('div');
+      sub.className = 'ns';
+      sub.textContent = node.sub;
+      div.appendChild(sub);
+    }
+    container.appendChild(div);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EDGE DRAWING
+// ═══════════════════════════════════════════════════════════════════════════
+const nodeById = {};
+DATA.nodes.forEach(n => nodeById[n.id] = n);
+
+function edgePath(fn, tn, offsetX = 0) {
+  const sx = fn._cx + offsetX;
+  const sy = fn._y + NODE_H;
+  const tx = tn._cx + offsetX;
+  const ty = tn._y;
+
+  if (fn.layer === tn.layer) {
+    // Same layer: arc above the lane
+    const arcY = fn._laneY + 4;
+    return `M ${sx} ${fn._y} C ${sx} ${arcY}, ${tx} ${arcY}, ${tx} ${tn._y + NODE_H}`;
+  }
+
+  const dy = ty - sy;
+  const cp1y = sy + dy * 0.42;
+  const cp2y = ty - dy * 0.42;
+  return `M ${sx} ${sy} C ${sx} ${cp1y}, ${tx} ${cp2y}, ${tx} ${ty}`;
+}
+
+function midPoint(fn, tn) {
+  if (fn.layer === tn.layer) {
+    return { x: (fn._cx + tn._cx) / 2, y: fn._laneY + 4 };
+  }
+  const sx = fn._cx, sy = fn._y + NODE_H;
+  const tx = tn._cx, ty = tn._y;
+  const dy = ty - sy;
+  // Evaluate cubic bezier at t=0.5
+  const cp1y = sy + dy * 0.42;
+  const cp2y = ty - dy * 0.42;
+  const t = 0.5, u = 0.5;
+  return {
+    x: u*u*u*sx + 3*u*u*t*sx + 3*u*t*t*tx + t*t*t*tx,
+    y: u*u*u*sy + 3*u*u*t*cp1y + 3*u*t*t*cp2y + t*t*t*ty
+  };
+}
+
+function clearEdges() {
+  const svg = document.getElementById('edges-svg');
+  svg.querySelectorAll('.edge-group').forEach(e => e.remove());
+}
+
+function drawEdges(workflow) {
+  const svg   = document.getElementById('edges-svg');
+  const color = workflow.color;
+  document.getElementById('arr-active-path').setAttribute('fill', color);
+
+  // Group edges by (from,to) to offset duplicates
+  const edgeMap = {};
+  workflow.steps.forEach(step => {
+    const key = step.from + '→' + step.to;
+    if (!edgeMap[key]) edgeMap[key] = [];
+    edgeMap[key].push(step);
+  });
+
+  Object.entries(edgeMap).forEach(([key, steps]) => {
+    const fn = nodeById[steps[0].from];
+    const tn = nodeById[steps[0].to];
+    if (!fn || !tn) return;
+
+    steps.forEach((step, i) => {
+      const offsets = steps.length === 1 ? [0] : steps.map((_, j) => (j - (steps.length-1)/2) * 8);
+      const ox = offsets[i];
+
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.className.baseVal = 'edge-group';
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d', edgePath(fn, tn, ox));
+      path.setAttribute('fill','none');
+      path.setAttribute('stroke', color);
+      path.setAttribute('stroke-width','1.8');
+      path.setAttribute('stroke-opacity','0.8');
+      path.setAttribute('marker-end','url(#arr-active)');
+      g.appendChild(path);
+
+      if (step.label) {
+        const mid = midPoint(fn, tn);
+        const rectW = Math.min(step.label.length * 5.5 + 8, 200);
+        const rectH = 13;
+        const rx = mid.x - rectW/2 + ox;
+        const ry = mid.y - rectH/2;
+
+        const bg = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        bg.setAttribute('x', rx);
+        bg.setAttribute('y', ry);
+        bg.setAttribute('width', rectW);
+        bg.setAttribute('height', rectH);
+        bg.setAttribute('rx','2');
+        bg.setAttribute('fill','#0d1117');
+        bg.setAttribute('fill-opacity','0.88');
+        g.appendChild(bg);
+
+        const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+        txt.setAttribute('x', mid.x + ox);
+        txt.setAttribute('y', mid.y + 4);
+        txt.setAttribute('text-anchor','middle');
+        txt.setAttribute('font-size','8.5');
+        txt.setAttribute('font-family','ui-monospace,monospace');
+        txt.setAttribute('fill', color);
+        txt.setAttribute('fill-opacity','0.9');
+        txt.textContent = step.label.length > 36 ? step.label.slice(0,35)+'…' : step.label;
+        g.appendChild(txt);
+      }
+
+      svg.appendChild(g);
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SELECTION
+// ═══════════════════════════════════════════════════════════════════════════
+let activeWf = null;
+
+function selectWorkflow(wf) {
+  activeWf = wf;
+
+  // Update sidebar buttons
+  document.querySelectorAll('.wf-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.id === wf.id);
+    b.style.borderLeftColor = b.dataset.id === wf.id ? wf.color : 'transparent';
+  });
+
+  // Collect active node IDs
+  const activeIds = new Set();
+  wf.steps.forEach(s => { activeIds.add(s.from); activeIds.add(s.to); });
+
+  // Update node classes
+  document.querySelectorAll('.node').forEach(el => {
+    const id = el.id.replace('node-','');
+    el.classList.remove('active','dimmed');
+    el.classList.add(activeIds.has(id) ? 'active' : 'dimmed');
+  });
+
+  // Draw edges
+  clearEdges();
+  drawEdges(wf);
+
+  // Update info bar
+  document.getElementById('info-ph').style.display  = 'none';
+  document.getElementById('info-det').style.display = 'block';
+  document.getElementById('info-name').textContent  = wf.name;
+  document.getElementById('info-name').style.color  = wf.color;
+  document.getElementById('info-desc').textContent  = wf.desc;
+  document.getElementById('info-steps').textContent = `${wf.steps.length} edges · ${activeIds.size} nodes active`;
+}
+
+function clearSelection() {
+  activeWf = null;
+  document.querySelectorAll('.wf-btn').forEach(b => {
+    b.classList.remove('active');
+    b.style.borderLeftColor = 'transparent';
+  });
+  document.querySelectorAll('.node').forEach(el => el.classList.remove('active','dimmed'));
+  clearEdges();
+  document.getElementById('info-ph').style.display  = '';
+  document.getElementById('info-det').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SIDEBAR WORKFLOWS
+// ═══════════════════════════════════════════════════════════════════════════
+function renderSidebar() {
+  const list = document.getElementById('workflow-list');
+  DATA.workflows.forEach(wf => {
+    const btn = document.createElement('button');
+    btn.className = 'wf-btn';
+    btn.dataset.id = wf.id;
+    btn.style.borderLeftColor = 'transparent';
+    btn.innerHTML = `
+      <div class="wf-name"><span class="wf-color" style="background:${wf.color}"></span>${wf.name}</div>
+      <div class="wf-short">${wf.short}</div>`;
+    btn.addEventListener('click', () => {
+      if (activeWf && activeWf.id === wf.id) clearSelection();
+      else selectWorkflow(wf);
+    });
+    list.appendChild(btn);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LEGEND
+// ═══════════════════════════════════════════════════════════════════════════
+function renderLegend() {
+  const leg = document.getElementById('legend');
+  DATA.layers.forEach(layer => {
+    const row = document.createElement('div');
+    row.className = 'lg-row';
+    row.innerHTML = `
+      <div class="lg-swatch" style="background:${layer.bg};border-color:${layer.tc}44"></div>
+      <div class="lg-label">${layer.label}</div>`;
+    leg.appendChild(row);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TOOLTIP on node hover
+// ═══════════════════════════════════════════════════════════════════════════
+function setupTooltips() {
+  const tip = document.getElementById('tooltip');
+  document.querySelectorAll('.node').forEach(el => {
+    const id   = el.id.replace('node-','');
+    const node = nodeById[id];
+    if (!node) return;
+
+    el.addEventListener('mouseenter', e => {
+      tip.innerHTML = `<strong>${node.label}</strong>${node.sub || ''}`;
+      tip.style.display = 'block';
+    });
+    el.addEventListener('mousemove', e => {
+      tip.style.left = (e.clientX + 12) + 'px';
+      tip.style.top  = (e.clientY + 12) + 'px';
+    });
+    el.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+(function init() {
+  const { CANVAS_W, CANVAS_H } = computeLayout();
+  renderLanes(CANVAS_W, CANVAS_H);
+  renderNodes();
+  renderSidebar();
+  renderLegend();
+  setupTooltips();
+  document.getElementById('clear-btn').addEventListener('click', clearSelection);
+})();
+</script>
+</body>
+</html>
