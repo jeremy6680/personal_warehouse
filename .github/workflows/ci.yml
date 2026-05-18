@@ -121,23 +121,42 @@ jobs:
             || true
 
       # ── 11. Pre-create empty seed tables in BigQuery
-      - name: Pre-create empty seed tables in BigQuery
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
+      - name: Pre-create empty seed tables
         run: |
-          PROJECT=${{ secrets.GCP_PROJECT_ID }}
-          DATASET=ci_pr_${{ github.event.pull_request.number }}
+          python - <<'EOF'
+          from google.cloud import bigquery
+          import os
 
-          gcloud auth activate-service-account --key-file=/tmp/gcp-key.json
+          os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/gcp-key.json"
+          client = bigquery.Client(project="${{ secrets.GCP_PROJECT_ID }}")
+          dataset = "ci_pr_${{ github.event.pull_request.number }}"
 
-          bq mk --table ${PROJECT}:${DATASET}.manga_author_countries \
-            author:STRING,country:STRING
+          tables = {
+              "manga_author_countries": [
+                  bigquery.SchemaField("author", "STRING"),
+                  bigquery.SchemaField("country", "STRING"),
+              ],
+              "anime_director_countries": [
+                  bigquery.SchemaField("director", "STRING"),
+                  bigquery.SchemaField("country", "STRING"),
+              ],
+              "manual_ratings": [
+                  bigquery.SchemaField("domain", "STRING"),
+                  bigquery.SchemaField("title", "STRING"),
+                  bigquery.SchemaField("author_or_director_or_artist", "STRING"),
+                  bigquery.SchemaField("rating", "FLOAT64"),
+                  bigquery.SchemaField("rated_at", "DATE"),
+              ],
+          }
 
-          bq mk --table ${PROJECT}:${DATASET}.anime_director_countries \
-            director:STRING,country:STRING
-
-          bq mk --table ${PROJECT}:${DATASET}.manual_ratings \
-            domain:STRING,title:STRING,author_or_director_or_artist:STRING,rating:FLOAT64,rated_at:DATE
+          for table_id, schema in tables.items():
+              ref = f"{client.project}.{dataset}.{table_id}"
+              table = bigquery.Table(ref, schema=schema)
+              client.create_table(table, exists_ok=True)
+              # Wait for the table to be fully available
+              client.get_table(ref)
+              print(f"Ready: {ref}")
+          EOF
 
       # ── 12. dbt build ────────────────────────────────────────────────────
       # Run seeds → models → tests in dependency order, against the CI dataset.
@@ -146,7 +165,7 @@ jobs:
       - name: Build and test dbt models
         run: |
           dbt seed --full-refresh
-          dbt run --fail-fast --exclude int_manga__unified int_anime__unified
+          dbt run --fail-fast --vars '{"ci": true}'
           dbt test --fail-fast --exclude seed:manual_ratings seed:manga_author_countries seed:anime_director_countries
 
       # ── 13. Cleanup CI dataset ───────────────────────────────────────────
