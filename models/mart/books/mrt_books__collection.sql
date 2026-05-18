@@ -31,28 +31,28 @@ collection AS (
         genre,
         category,
         -- Goodreads is source of truth for rating; fall back to BookBuddy (0 = unrated)
-        COALESCE(
-            CAST(goodreads_rating AS FLOAT64),
-            NULLIF(rating, 0)
-        )                                                           AS rating,
         year_published,
         publisher,
         isbn,
         tags,
         country,
+        goodreads_id,
+        coalesce(
+            cast(goodreads_rating AS FLOAT64),
+            nullif(rating, 0)
+        ) AS rating,
         CASE
-            WHEN match_type IS NOT NULL   THEN 'bookbuddy_and_goodreads'
+            WHEN match_type IS NOT NULL THEN 'bookbuddy_and_goodreads'
             WHEN goodreads_id IS NOT NULL THEN 'goodreads'
-            ELSE                               'bookbuddy'
-        END                                                         AS source,
-        goodreads_id
+            ELSE 'bookbuddy'
+        END AS source
     FROM source_data
 ),
 
 with_flags AS (
     SELECT
         *,
-        rating IS NOT NULL                                          AS is_rated
+        rating IS NOT NULL AS is_rated
     FROM collection
 )
 

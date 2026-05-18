@@ -16,14 +16,14 @@ source AS (
 
 renamed AS (
     SELECT
-        CAST(`Book Id` AS STRING)                                               AS book_id,
-        trim(`Title`)                                                           AS title,
-        trim(`Author`)                                                          AS author,
-        safe_cast(trim(CAST(`Year Published` AS STRING)) AS INT64)              AS year_published,
-        trim(`Publisher`)                                                       AS publisher,
-        nullif(regexp_replace(`ISBN`, r'^="?|"$', ''), '')                      AS isbn,
-        safe_cast(trim(CAST(`My Rating` AS STRING)) AS INT64)                   AS rating,
-        'goodreads'                                                             AS source_name
+        cast(`Book Id` AS STRING) AS book_id,
+        'goodreads' AS source_name,
+        trim(`Title`) AS title,
+        trim(`Author`) AS author,
+        safe_cast(trim(cast(`Year Published` AS STRING)) AS INT64) AS year_published,
+        trim(`Publisher`) AS publisher,
+        nullif(regexp_replace(isbn, r'^="?|"$', ''), '') AS isbn,
+        safe_cast(trim(cast(`My Rating` AS STRING)) AS INT64) AS rating
     FROM source
 )
 

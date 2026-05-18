@@ -14,19 +14,19 @@ source AS (
 
 renamed AS (
     SELECT
-        SAFE_CAST(trakt_movie_id AS INT64)        AS trakt_movie_id,
-        CAST(slug AS STRING)                      AS slug,
-        CAST(imdb_id AS STRING)                   AS imdb_id,
-        SAFE_CAST(tmdb_id AS INT64)               AS tmdb_id,
-        trim(title)                               AS title,
-        SAFE_CAST(release_year AS INT64)          AS release_year,
-        SAFE_CAST(plays AS INT64)                 AS watch_count,
-        SAFE_CAST(last_watched_at AS TIMESTAMP)   AS last_watched_at,
-        SAFE_CAST(last_updated_at AS TIMESTAMP)   AS last_updated_at,
-        CAST(genres AS STRING)                    AS genres,
-        SAFE_CAST(runtime_minutes AS INT64)       AS runtime_minutes,
-        CAST(country AS STRING)                   AS country,
-        SAFE_CAST(_extracted_at AS TIMESTAMP)     AS _extracted_at
+        cast(slug AS STRING) AS slug,
+        cast(imdb_id AS STRING) AS imdb_id,
+        cast(genres AS STRING) AS genres,
+        cast(country AS STRING) AS country,
+        safe_cast(trakt_movie_id AS INT64) AS trakt_movie_id,
+        safe_cast(tmdb_id AS INT64) AS tmdb_id,
+        trim(title) AS title,
+        safe_cast(release_year AS INT64) AS release_year,
+        safe_cast(plays AS INT64) AS watch_count,
+        safe_cast(last_watched_at AS TIMESTAMP) AS last_watched_at,
+        safe_cast(last_updated_at AS TIMESTAMP) AS last_updated_at,
+        safe_cast(runtime_minutes AS INT64) AS runtime_minutes,
+        safe_cast(_extracted_at AS TIMESTAMP) AS _extracted_at
     FROM source
 ),
 

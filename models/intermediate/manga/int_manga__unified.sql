@@ -19,39 +19,39 @@ bookbuddy AS (
 
 manga_author_countries AS (
     SELECT
-        lower(trim(author)) AS author_key,
-        country
+        country,
+        lower(trim(author)) AS author_key
     FROM {{ ref('manga_author_countries') }}
 ),
 
 genre_mapping AS (
     SELECT
-        lower(trim(raw_genre)) AS raw_genre_key,
-        normalized_genre
+        normalized_genre,
+        lower(trim(raw_genre)) AS raw_genre_key
     FROM {{ ref('genre_mapping') }}
     WHERE domain = 'manga'
 ),
 
 manual_ratings AS (
     SELECT
-        lower(trim(title))                        AS title_key,
-        lower(trim(author_or_director_or_artist)) AS creator_key,
-        rating                                    AS manual_rating
+        rating AS manual_rating,
+        lower(trim(title)) AS title_key,
+        lower(trim(author_or_director_or_artist)) AS creator_key
     FROM {{ ref('manual_ratings') }}
     WHERE domain = 'manga'
 ),
 
 country_name_fr AS (
     SELECT
-        lower(trim(country_en)) AS country_key,
-        country_fr
+        country_fr,
+        lower(trim(country_en)) AS country_key
     FROM {{ ref('country_name_fr') }}
 ),
 
 manga_keyed AS (
     SELECT
         *,
-        lower(trim(title))  AS title_key,
+        lower(trim(title)) AS title_key,
         lower(trim(author)) AS author_key
     FROM bookbuddy
     WHERE category = 'Manga'
@@ -59,26 +59,27 @@ manga_keyed AS (
 
 combined AS (
     SELECT
-        book_id                                                   AS manga_id,
+        book_id AS manga_id,
         title,
         author,
-        gm.normalized_genre                                       AS genre,
+        gm.normalized_genre AS genre,
         category,
-        COALESCE(NULLIF(rating, 0), mr.manual_rating)             AS rating,
         isbn,
         tags,
-        COALESCE(cnf.country_fr, mac.country)                     AS country,
-        'bookbuddy'                                               AS source
-    FROM manga_keyed mk
-    LEFT JOIN genre_mapping gm
+        'bookbuddy' AS source,
+        coalesce(nullif(rating, 0), mr.manual_rating) AS rating,
+        coalesce(cnf.country_fr, mac.country) AS country
+    FROM manga_keyed AS mk
+    LEFT JOIN genre_mapping AS gm
         ON lower(trim(mk.genre)) = gm.raw_genre_key
-    LEFT JOIN manga_author_countries mac
+    LEFT JOIN manga_author_countries AS mac
         ON mk.author_key = mac.author_key
-    LEFT JOIN country_name_fr cnf
+    LEFT JOIN country_name_fr AS cnf
         ON lower(trim(mac.country)) = cnf.country_key
-    LEFT JOIN manual_ratings mr
-        ON  mk.title_key  = mr.title_key
-        AND mk.author_key = mr.creator_key
+    LEFT JOIN manual_ratings AS mr
+        ON
+            mk.title_key = mr.title_key
+            AND mk.author_key = mr.creator_key
 )
 
 SELECT * FROM combined

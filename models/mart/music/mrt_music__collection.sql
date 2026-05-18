@@ -28,7 +28,7 @@ collection AS (
     SELECT
         album_id,
         title,
-        artist_display                  AS artist,
+        artist_display AS artist,
         genres,
         release_year,
         discogs_release_id,
@@ -39,17 +39,17 @@ collection AS (
         bandcamp_item_url,
         bandcamp_added_at,
         bandcamp_origin,
-        NULLIF(rating, 0)               AS rating,
         country,
         source_name,
-        media_format
+        media_format,
+        nullif(rating, 0) AS rating
     FROM source_data
 ),
 
 with_flags AS (
     SELECT
         *,
-        rating IS NOT NULL              AS is_rated
+        rating IS NOT NULL AS is_rated
     FROM collection
 )
 

@@ -741,3 +741,42 @@ for country names). Mart models expose French values directly.
 
 **Trade-offs:** Mapping seeds must be exhaustive. Unmapped values pass through in
 English and trigger a `dbt_expectations.expect_column_values_to_be_in_set` test alert.
+
+---
+
+## ADR-027 — SQLFluff rule exclusions: RF02 and RF04
+
+**Date:** 2026
+**Status:** Active
+
+**Context:** After introducing SQLFluff linting in the CI pipeline, two rule categories
+produced a high volume of violations that `sqlfluff fix` cannot auto-correct:
+
+- **RF02** (`references.qualification`) — requires qualifying every column reference with
+  its CTE alias when the query involves more than one table or CTE. In complex intermediate
+  models with 5+ CTEs and UNION patterns, this produces dozens of violations per file
+  without adding meaningful clarity — CTE names already serve as documentation.
+- **RF04** (`references.keywords`) — flags column aliases that happen to be SQL reserved
+  words (`status`, `source`, `network`). These aliases are intentional and well-understood
+  in context; renaming them would degrade readability.
+
+RF05 (`references.quoting`) was already excluded prior to this decision (see `.sqlfluff`).
+
+**Decision:** Add `RF02` and `RF04` to `exclude_rules` in `.sqlfluff`.
+
+```ini
+exclude_rules = RF05,RF02,RF04
+```
+
+**Rationale:**
+
+- These rules are valid in general but too aggressive for a dbt project with complex
+  multi-CTE intermediate models.
+- The dbt community broadly accepts skipping RF02 — CTE naming conventions already
+  make column origins clear.
+- Excluding them unblocks CI without compromising code quality on the rules that matter
+  (capitalisation, spacing, structure).
+
+**Trade-offs:** Unqualified column references in joins will not be caught by the linter.
+Ambiguous references must be caught in code review or will surface as BigQuery errors
+at `dbt build` time.

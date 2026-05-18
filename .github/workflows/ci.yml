@@ -1,0 +1,179 @@
+# .github/workflows/ci.yml
+#
+# CI pipeline for personal_warehouse — runs on every PR targeting main.
+# Steps: install → lint (SQLFluff) → compile (dbt) → build + test (dbt)
+# All dbt runs target an isolated BigQuery CI dataset (ci_pr_<number>).
+
+name: dbt CI
+
+# ─── Triggers ────────────────────────────────────────────────────────────────
+# This workflow runs:
+#   - on any PR opened, reopened, or updated (synchronize) targeting main
+#   - on manual trigger from the GitHub Actions tab (useful for debugging)
+on:
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch: # manual trigger
+
+# ─── Permissions ─────────────────────────────────────────────────────────────
+# Minimal permissions — read-only on repo content.
+permissions:
+  contents: read
+
+# ─── Jobs ────────────────────────────────────────────────────────────────────
+jobs:
+  dbt-ci:
+    name: Lint, Compile & Test
+    runs-on: ubuntu-latest # GitHub-hosted runner — free for public repos
+
+    # Each step runs sequentially. If one fails, the job stops.
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      # Clone the repo at the PR head commit into the runner.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python setup ──────────────────────────────────────────────────
+      # Set up the Python version. Pin it to avoid surprise breakages.
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ── 3. Pip cache ─────────────────────────────────────────────────────
+      # Cache pip dependencies between runs — speeds up CI significantly.
+      # Cache key is based on the hash of requirements.txt: if the file
+      # hasn't changed, we restore the cache instead of re-downloading.
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # ── 4. Install Python dependencies ───────────────────────────────────
+      # Install dbt-bigquery, SQLFluff, and any other deps from requirements.txt.
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── 5. Install dbt packages ──────────────────────────────────────────
+      # Equivalent to `dbt deps` — installs dbt_utils, dbt_expectations, codegen.
+      # The dbt_packages/ folder is git-ignored, so we must reinstall each run.
+      - name: Install dbt packages
+        run: dbt deps
+
+      # ── 6. Write GCP service account key ─────────────────────────────────
+      # GitHub can't pass a file as a secret, so we stored the JSON as a string.
+      # Here we write it back to a temporary file that dbt's profiles.yml will reference.
+      # /tmp is ephemeral — it disappears when the runner stops.
+      - name: Write GCP service account key
+        run: echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > /tmp/gcp-key.json
+
+      # ── 7. Write CI profiles.yml ─────────────────────────────────────────
+      # dbt looks for profiles.yml in ~/.dbt/ by default.
+      # We write a CI-specific profile that:
+      #   - uses service-account authentication
+      #   - targets an isolated dataset named ci_pr_<PR_number>
+      # The PR number comes from GitHub's built-in context variable.
+      - name: Write dbt profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          personal_warehouse:
+            target: ci
+            outputs:
+              ci:
+                type: bigquery
+                method: service-account
+                project: ${{ secrets.GCP_PROJECT_ID }}
+                dataset: ci_pr_${{ github.event.pull_request.number }}
+                keyfile: /tmp/gcp-key.json
+                threads: 4
+                timeout_seconds: 300
+                location: EU
+          EOF
+
+      # ── 8. SQLFluff lint ─────────────────────────────────────────────────
+      # Lint all SQL models with SQLFluff using your existing .sqlfluff config.
+      # `--warn-unused-ignores` flags stale `-- noqa` comments.
+      # Exit code 0 = clean, 1 = violations found (fails the job).
+      - name: Lint SQL with SQLFluff
+        run: sqlfluff lint models/ --warn-unused-ignores
+
+      # ── 9. dbt compile ───────────────────────────────────────────────────
+      # Compile Jinja templates into plain SQL. No warehouse connection needed.
+      # Catches: undefined ref(), undefined source(), Jinja syntax errors.
+      # Fast (~5–10s) — great early gate before the heavier build step.
+      - name: Compile dbt project
+        run: dbt compile
+
+      # ── 10. Create CI dataset and seed tables ─────────────────────────────
+      # Use the BigQuery Python client to:
+      #   1. Create a new dataset named ci_pr_<PR_number>
+      #   2. Create empty tables with the correct schema for all seeds
+      # This ensures the dbt seed step has the necessary tables to insert into.
+      - name: Create CI dataset and pre-create empty seed tables
+        run: |
+          python - <<'EOF'
+          from google.cloud import bigquery
+          import os, time
+
+          os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/gcp-key.json"
+          client = bigquery.Client(project="${{ secrets.GCP_PROJECT_ID }}")
+          dataset_id = "ci_pr_${{ github.event.pull_request.number }}"
+
+          # Create dataset
+          dataset = bigquery.Dataset(f"{client.project}.{dataset_id}")
+          dataset.location = "EU"
+          client.create_dataset(dataset, exists_ok=True)
+          print(f"Dataset ready: {dataset_id}")
+          time.sleep(5)
+
+          tables = {
+              "manga_author_countries": [
+                  bigquery.SchemaField("author", "STRING"),
+                  bigquery.SchemaField("country", "STRING"),
+              ],
+              "anime_director_countries": [
+                  bigquery.SchemaField("director", "STRING"),
+                  bigquery.SchemaField("country", "STRING"),
+              ],
+              "manual_ratings": [
+                  bigquery.SchemaField("domain", "STRING"),
+                  bigquery.SchemaField("title", "STRING"),
+                  bigquery.SchemaField("author_or_director_or_artist", "STRING"),
+                  bigquery.SchemaField("rating", "FLOAT64"),
+                  bigquery.SchemaField("rated_at", "DATE"),
+              ],
+          }
+
+          for table_id, schema in tables.items():
+              ref = f"{client.project}.{dataset_id}.{table_id}"
+              table = bigquery.Table(ref, schema=schema)
+              client.create_table(table, exists_ok=True)
+              client.get_table(ref)
+              print(f"Ready: {ref}")
+          EOF
+
+      # ── 12. dbt build ────────────────────────────────────────────────────
+      # Run seeds → models → tests in dependency order, against the CI dataset.
+      # This actually executes SQL on BigQuery — creates views and tables in ci_pr_<N>.
+      # `--fail-fast` stops at the first failure instead of running everything.
+      - name: Build and test dbt models
+        run: |
+          dbt seed --full-refresh --exclude manga_author_countries anime_director_countries manual_ratings
+          dbt run --fail-fast --vars '{"ci": true}'
+          dbt test --fail-fast --exclude manga_author_countries anime_director_countries manual_ratings
+
+      # ── 13. Cleanup CI dataset ───────────────────────────────────────────
+      # Drop the temporary CI dataset to avoid accumulating clutter and costs.
+      # `if: always()` means this step runs even if previous steps failed.
+      # `bq` CLI is pre-installed on GitHub ubuntu-latest runners.
+      - name: Delete CI dataset
+        if: always()
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
+        run: |
+          bq rm -r -f --dataset ${{ secrets.GCP_PROJECT_ID }}:ci_pr_${{ github.event.pull_request.number }} || true

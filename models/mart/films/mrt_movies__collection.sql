@@ -27,7 +27,6 @@ collection AS (
         title,
         content_type,
         release_year,
-        first_watched_date IS NOT NULL                              AS is_watched,
         first_watched_date,
         last_watched_date,
         rating,
@@ -37,14 +36,15 @@ collection AS (
         tmdb_id,
         letterboxd_uri,
         country,
-        source
+        source,
+        first_watched_date IS NOT NULL AS is_watched
     FROM source_data
 ),
 
 with_flags AS (
     SELECT
         *,
-        rating IS NOT NULL                                          AS is_rated
+        rating IS NOT NULL AS is_rated
     FROM collection
 )
 

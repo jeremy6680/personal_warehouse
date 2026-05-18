@@ -14,11 +14,11 @@ source AS (
 
 renamed AS (
     SELECT
-        safe_cast(`Date` AS DATE)             AS watched_date,
-        trim(`Name`)                          AS film_name,
-        safe_cast(`Year` AS INT64)            AS release_year,
-        trim(`Letterboxd URI`)                AS letterboxd_uri,
-        safe_cast(`Rating` AS FLOAT64)        AS rating
+        safe_cast(`Date` AS DATE) AS watched_date,
+        trim(`Name`) AS film_name,
+        safe_cast(`Year` AS INT64) AS release_year,
+        trim(`Letterboxd URI`) AS letterboxd_uri,
+        safe_cast(`Rating` AS FLOAT64) AS rating
     FROM source
 ),
 

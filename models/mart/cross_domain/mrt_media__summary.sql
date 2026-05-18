@@ -43,62 +43,62 @@ anime AS (
 
 books_summary AS (
     SELECT
-        'books'                              AS domain,
-        COUNT(*)                             AS total_items,
+        'books' AS domain,
+        count(*) AS total_items,
         -- All books in the collection are read (ADR-025)
-        COUNT(*)                             AS items_consumed,
-        CAST(0 AS INT64)                     AS items_pending,
-        COUNTIF(is_rated)                    AS items_rated,
-        ROUND(AVG(rating), 2)                AS avg_rating,
-        COUNTIF(country IS NOT NULL)         AS items_with_country
+        count(*) AS items_consumed,
+        cast(0 AS INT64) AS items_pending,
+        countif(is_rated) AS items_rated,
+        round(avg(rating), 2) AS avg_rating,
+        countif(country IS NOT NULL) AS items_with_country
     FROM books
 ),
 
 movies_summary AS (
     SELECT
-        'movies'                             AS domain,
-        COUNT(*)                             AS total_items,
-        COUNTIF(is_watched)                  AS items_consumed,
-        COUNTIF(NOT is_watched)              AS items_pending,
-        COUNTIF(is_rated)                    AS items_rated,
-        ROUND(AVG(rating), 2)                AS avg_rating,
-        COUNTIF(country IS NOT NULL)         AS items_with_country
+        'movies' AS domain,
+        count(*) AS total_items,
+        countif(is_watched) AS items_consumed,
+        countif(NOT is_watched) AS items_pending,
+        countif(is_rated) AS items_rated,
+        round(avg(rating), 2) AS avg_rating,
+        countif(country IS NOT NULL) AS items_with_country
     FROM movies
 ),
 
 music_summary AS (
     SELECT
-        'music'                              AS domain,
-        COUNT(*)                             AS total_items,
-        CAST(NULL AS INT64)                  AS items_consumed,
-        CAST(NULL AS INT64)                  AS items_pending,
-        COUNTIF(is_rated)                    AS items_rated,
-        ROUND(AVG(rating), 2)                AS avg_rating,
-        COUNTIF(country IS NOT NULL)         AS items_with_country
+        'music' AS domain,
+        count(*) AS total_items,
+        cast(NULL AS INT64) AS items_consumed,
+        cast(NULL AS INT64) AS items_pending,
+        countif(is_rated) AS items_rated,
+        round(avg(rating), 2) AS avg_rating,
+        countif(country IS NOT NULL) AS items_with_country
     FROM music
 ),
 
 manga_summary AS (
     SELECT
-        'manga'                              AS domain,
-        COUNT(*)                             AS total_items,
-        CAST(NULL AS INT64)                  AS items_consumed,
-        CAST(NULL AS INT64)                  AS items_pending,
-        COUNTIF(is_rated)                    AS items_rated,
-        ROUND(AVG(rating), 2)                AS avg_rating,
-        COUNTIF(country IS NOT NULL)         AS items_with_country
+        'manga' AS domain,
+        count(*) AS total_items,
+        cast(NULL AS INT64) AS items_consumed,
+        cast(NULL AS INT64) AS items_pending,
+        countif(is_rated) AS items_rated,
+        round(avg(rating), 2) AS avg_rating,
+        countif(country IS NOT NULL) AS items_with_country
     FROM manga
 ),
 
 anime_summary AS (
     SELECT
-        'anime'                              AS domain,
-        COUNT(*)                             AS total_items,
-        COUNTIF(is_watched)                  AS items_consumed,
-        COUNTIF(NOT is_watched)              AS items_pending,
-        COUNTIF(is_rated)                    AS items_rated,
-        ROUND(AVG(rating), 2)                AS avg_rating,
-        COUNTIF(country IS NOT NULL)         AS items_with_country
+        'anime' AS domain,
+        count(*) AS total_items,
+        countif(is_watched) AS items_consumed,
+        countif(NOT is_watched) AS items_pending,
+        countif(is_rated) AS items_rated,
+        round(avg(rating), 2) AS avg_rating,
+        countif(country IS NOT NULL) AS items_with_country
     FROM anime
 ),
 

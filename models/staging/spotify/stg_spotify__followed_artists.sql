@@ -19,12 +19,12 @@ source AS (
 
 renamed AS (
     SELECT
-        CAST(artist_id AS STRING)  AS artist_id,
-        name                                AS artist_name,
+        cast(artist_id AS STRING) AS artist_id,
+        name AS artist_name,
         genres,
-        SAFE_CAST(popularity AS INT64)      AS popularity,
-        SAFE_CAST(followers AS INT64)       AS followers,
-        _extracted_at
+        _extracted_at,
+        safe_cast(popularity AS INT64) AS popularity,
+        safe_cast(followers AS INT64) AS followers
     FROM source
 )
 

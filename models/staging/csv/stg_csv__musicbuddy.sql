@@ -19,13 +19,13 @@ source AS (
 
 renamed AS (
     SELECT
-        trim(`Title`)                             AS title,
-        trim(`Artist`)                            AS artist,
-        nullif(trim(`Genres`), '')                AS genres,
-        safe_cast(`Release Year` AS INT64)        AS release_year,
-        safe_cast(`discogs Release ID` AS INT64)  AS discogs_release_id,
-        safe_cast(`Rating` AS FLOAT64)            AS rating,
-        CAST(`Date Added` AS STRING)              AS _date_added
+        cast(`Date Added` AS STRING) AS _date_added,
+        trim(`Title`) AS title,
+        trim(`Artist`) AS artist,
+        nullif(trim(`Genres`), '') AS genres,
+        safe_cast(`Release Year` AS INT64) AS release_year,
+        safe_cast(`discogs Release ID` AS INT64) AS discogs_release_id,
+        safe_cast(`Rating` AS FLOAT64) AS rating
     FROM source
 ),
 
@@ -39,7 +39,7 @@ with_id AS (
 deduped AS (
     SELECT * EXCEPT (_date_added)
     FROM with_id
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY album_id ORDER BY _date_added DESC) = 1
+    QUALIFY row_number() OVER (PARTITION BY album_id ORDER BY _date_added DESC) = 1
 )
 
 SELECT * FROM deduped

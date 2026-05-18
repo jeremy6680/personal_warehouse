@@ -15,20 +15,20 @@ source AS (
 
 renamed AS (
     SELECT
-        CAST(media_type AS STRING)                AS media_type,
-        SAFE_CAST(trakt_id AS INT64)              AS trakt_id,
-        CAST(slug AS STRING)                      AS slug,
-        CAST(imdb_id AS STRING)                   AS imdb_id,
-        SAFE_CAST(tmdb_id AS INT64)               AS tmdb_id,
-        trim(title)                               AS title,
-        SAFE_CAST(release_year AS INT64)          AS release_year,
-        SAFE_CAST(rating_raw AS INT64)            AS rating_raw,
-        SAFE_CAST(rating AS FLOAT64)              AS rating,
-        SAFE_CAST(rated_at AS TIMESTAMP)          AS rated_at,
-        CAST(genres AS STRING)                    AS genres,
-        SAFE_CAST(runtime_minutes AS INT64)       AS runtime_minutes,
-        CAST(country AS STRING)                   AS country,
-        SAFE_CAST(_extracted_at AS TIMESTAMP)     AS _extracted_at
+        cast(media_type AS STRING) AS media_type,
+        cast(slug AS STRING) AS slug,
+        cast(imdb_id AS STRING) AS imdb_id,
+        cast(genres AS STRING) AS genres,
+        cast(country AS STRING) AS country,
+        safe_cast(trakt_id AS INT64) AS trakt_id,
+        safe_cast(tmdb_id AS INT64) AS tmdb_id,
+        trim(title) AS title,
+        safe_cast(release_year AS INT64) AS release_year,
+        safe_cast(rating_raw AS INT64) AS rating_raw,
+        safe_cast(rating AS FLOAT64) AS rating,
+        safe_cast(rated_at AS TIMESTAMP) AS rated_at,
+        safe_cast(runtime_minutes AS INT64) AS runtime_minutes,
+        safe_cast(_extracted_at AS TIMESTAMP) AS _extracted_at
     FROM source
 ),
 
