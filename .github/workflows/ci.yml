@@ -163,7 +163,7 @@ jobs:
       # `--fail-fast` stops at the first failure instead of running everything.
       - name: Build and test dbt models
         run: |
-          dbt seed --full-refresh
+          dbt seed --full-refresh --exclude manga_author_countries anime_director_countries manual_ratings
           dbt run --fail-fast --vars '{"ci": true}'
           dbt test --fail-fast --exclude seed:manual_ratings seed:manga_author_countries seed:anime_director_countries
 
