@@ -127,6 +127,8 @@ jobs:
       - name: Build and test dbt models
         run: |
           dbt seed
+          echo "Waiting 30s for BigQuery table propagation..."
+          sleep 30
           dbt run --fail-fast
           dbt test --fail-fast --exclude seed:manual_ratings seed:manga_author_countries seed:anime_director_countries
 
