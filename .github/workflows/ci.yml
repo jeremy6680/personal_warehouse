@@ -13,7 +13,7 @@ name: dbt CI
 on:
   pull_request:
     branches:
-      - main
+      - master
   workflow_dispatch: # manual trigger
 
 # ─── Permissions ─────────────────────────────────────────────────────────────
