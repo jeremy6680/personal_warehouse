@@ -128,6 +128,8 @@ jobs:
           PROJECT=${{ secrets.GCP_PROJECT_ID }}
           DATASET=ci_pr_${{ github.event.pull_request.number }}
 
+          gcloud auth activate-service-account --key-file=/tmp/gcp-key.json
+
           bq mk --table ${PROJECT}:${DATASET}.manga_author_countries \
             author:STRING,country:STRING
 
