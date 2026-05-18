@@ -109,14 +109,25 @@ jobs:
       - name: Compile dbt project
         run: dbt compile
 
-      # ── 10. dbt build ────────────────────────────────────────────────────
+      # ── 10. Create CI dataset ────────────────────────────────────────────
+            # dbt does not auto-create the BigQuery dataset — we must create it first.
+            - name: Create CI BigQuery dataset
+              env:
+                GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
+              run: |
+                bq mk --dataset \
+                  --location=EU \
+                  ${{ secrets.GCP_PROJECT_ID }}:ci_pr_${{ github.event.pull_request.number }} \
+                  || true
+
+      # ── 11. dbt build ────────────────────────────────────────────────────
       # Run seeds → models → tests in dependency order, against the CI dataset.
       # This actually executes SQL on BigQuery — creates views and tables in ci_pr_<N>.
       # `--fail-fast` stops at the first failure instead of running everything.
       - name: Build and test dbt models
         run: dbt build --fail-fast
 
-      # ── 11. Cleanup CI dataset ───────────────────────────────────────────
+      # ── 12. Cleanup CI dataset ───────────────────────────────────────────
       # Drop the temporary CI dataset to avoid accumulating clutter and costs.
       # `if: always()` means this step runs even if previous steps failed.
       # `bq` CLI is pre-installed on GitHub ubuntu-latest runners.
