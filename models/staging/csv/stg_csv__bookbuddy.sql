@@ -18,15 +18,15 @@ source AS (
 
 renamed AS (
     SELECT
-        trim(`Title`)                                                                      AS title,
-        trim(`Author`)                                                                     AS author,
-        nullif(trim(`Genre`), '')                                                          AS genre,
-        nullif(trim(`Category`), '')                                                       AS category,
-        trim(`Status`)                                                                     AS status,
-        safe_cast(`Rating` AS FLOAT64)                                                     AS rating,
-        nullif(trim(CAST(`ISBN` AS STRING)), '')                                           AS isbn,
-        nullif(trim(CAST(`Tags` AS STRING)), '')                                           AS tags,
-        CAST(`Date Added` AS STRING)                                                       AS _date_added
+        cast(`Date Added` AS STRING) AS _date_added,
+        trim(`Title`) AS title,
+        trim(`Author`) AS author,
+        nullif(trim(`Genre`), '') AS genre,
+        nullif(trim(`Category`), '') AS category,
+        trim(`Status`) AS status,
+        safe_cast(`Rating` AS FLOAT64) AS rating,
+        nullif(trim(cast(isbn AS STRING)), '') AS isbn,
+        nullif(trim(cast(`Tags` AS STRING)), '') AS tags
     FROM source
 ),
 
@@ -40,7 +40,7 @@ with_id AS (
 deduped AS (
     SELECT * EXCEPT (_date_added)
     FROM with_id
-    QUALIFY ROW_NUMBER() OVER (PARTITION BY book_id ORDER BY _date_added DESC) = 1
+    QUALIFY row_number() OVER (PARTITION BY book_id ORDER BY _date_added DESC) = 1
 )
 
 SELECT * FROM deduped

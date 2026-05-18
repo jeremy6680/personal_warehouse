@@ -35,65 +35,65 @@ trakt_ratings AS (
 
 director_countries AS (
     SELECT
-        lower(trim(director)) AS director_key,
-        country
+        country,
+        lower(trim(director)) AS director_key
     FROM {{ ref('director_countries') }}
 ),
 
 film_countries AS (
     SELECT
-        lower(trim(title))          AS title_key,
-        CAST(release_year AS INT64) AS release_year,
-        country
+        cast(release_year AS INT64) AS release_year,
+        country,
+        lower(trim(title)) AS title_key
     FROM {{ ref('film_countries') }}
 ),
 
 genre_mapping AS (
     SELECT
-        lower(trim(raw_genre)) AS raw_genre_key,
-        normalized_genre
+        normalized_genre,
+        lower(trim(raw_genre)) AS raw_genre_key
     FROM {{ ref('genre_mapping') }}
     WHERE domain = 'movies'
 ),
 
 manual_ratings AS (
     SELECT
-        lower(trim(title))                        AS title_key,
-        lower(trim(author_or_director_or_artist)) AS creator_key,
-        rating                                    AS manual_rating
+        rating AS manual_rating,
+        lower(trim(title)) AS title_key,
+        lower(trim(author_or_director_or_artist)) AS creator_key
     FROM {{ ref('manual_ratings') }}
     WHERE domain = 'movies'
 ),
 
 country_name_fr AS (
     SELECT
-        lower(trim(country_en)) AS country_key,
-        country_fr
+        country_fr,
+        lower(trim(country_en)) AS country_key
     FROM {{ ref('country_name_fr') }}
 ),
 
 moviebuddy_keyed AS (
     SELECT
         *,
-        lower(trim(title))                                 AS title_key,
-        lower(trim(SPLIT(directors, ',')[SAFE_OFFSET(0)])) AS primary_director_key
+        lower(trim(title)) AS title_key,
+        lower(trim(split(directors, ',')[safe_offset(0)])) AS primary_director_key
     FROM moviebuddy
     WHERE NOT (
         content_type = 'TV Show'
-        AND LOWER(genres) LIKE '%animation%'
+        AND lower(genres) LIKE '%animation%'
     )
 ),
 
 moviebuddy_genres_normalised AS (
     SELECT
         movie_id,
-        STRING_AGG(
+        string_agg(
             gm.normalized_genre
             ORDER BY gm.normalized_genre
         ) AS genres_fr
-    FROM moviebuddy_keyed mb,
-        UNNEST(SPLIT(mb.genres, ',')) AS raw_genre
-    LEFT JOIN genre_mapping gm
+    FROM moviebuddy_keyed AS mb,
+        unnest(split(mb.genres, ',')) AS raw_genre
+    LEFT JOIN genre_mapping AS gm
         ON lower(trim(raw_genre)) = gm.raw_genre_key
     WHERE gm.normalized_genre IS NOT NULL
     GROUP BY movie_id
@@ -111,11 +111,11 @@ letterboxd_aggregated AS (
         title_key,
         film_name,
         release_year,
+        watched_date AS last_watched_date,
+        rating AS letterboxd_rating,
+        letterboxd_uri,
         min(watched_date) OVER (PARTITION BY title_key, release_year) AS first_watched_date,
-        watched_date                                                  AS last_watched_date,
-        count(*) OVER (PARTITION BY title_key, release_year)          AS watch_count,
-        rating                                                        AS letterboxd_rating,
-        letterboxd_uri
+        count(*) OVER (PARTITION BY title_key, release_year) AS watch_count
     FROM letterboxd_keyed
     QUALIFY
         row_number() OVER (
@@ -145,83 +145,86 @@ trakt_ratings_keyed AS (
 
 trakt_movies AS (
     SELECT
-        COALESCE(tw.title_key, tr.title_key)          AS title_key,
-        COALESCE(tw.title, tr.title)                  AS title,
-        COALESCE(tw.release_year, tr.release_year)    AS release_year,
-        COALESCE(tw.trakt_movie_id, tr.trakt_id)      AS trakt_movie_id,
-        COALESCE(tw.slug, tr.slug)                    AS trakt_slug,
-        COALESCE(tw.imdb_id, tr.imdb_id)              AS trakt_imdb_id,
-        COALESCE(tw.tmdb_id, tr.tmdb_id)              AS trakt_tmdb_id,
         tw.last_watched_at,
         tw.watch_count,
-        tr.rating                                     AS trakt_rating,
-        tr.rating_raw                                 AS trakt_rating_raw,
-        tr.rated_at                                   AS trakt_rated_at,
-        COALESCE(tw.genres, tr.genres)                AS genres,
-        COALESCE(tw.runtime_minutes, tr.runtime_minutes) AS runtime_minutes,
-        COALESCE(tw.country, tr.country)              AS country
-    FROM trakt_watched_keyed tw
-    FULL OUTER JOIN trakt_ratings_keyed tr
-        ON  tw.title_key    = tr.title_key
-        AND tw.release_year = tr.release_year
+        tr.rating AS trakt_rating,
+        tr.rating_raw AS trakt_rating_raw,
+        tr.rated_at AS trakt_rated_at,
+        coalesce(tw.title_key, tr.title_key) AS title_key,
+        coalesce(tw.title, tr.title) AS title,
+        coalesce(tw.release_year, tr.release_year) AS release_year,
+        coalesce(tw.trakt_movie_id, tr.trakt_id) AS trakt_movie_id,
+        coalesce(tw.slug, tr.slug) AS trakt_slug,
+        coalesce(tw.imdb_id, tr.imdb_id) AS trakt_imdb_id,
+        coalesce(tw.tmdb_id, tr.tmdb_id) AS trakt_tmdb_id,
+        coalesce(tw.genres, tr.genres) AS genres,
+        coalesce(tw.runtime_minutes, tr.runtime_minutes) AS runtime_minutes,
+        coalesce(tw.country, tr.country) AS country
+    FROM trakt_watched_keyed AS tw
+    FULL OUTER JOIN trakt_ratings_keyed AS tr
+        ON
+            tw.title_key = tr.title_key
+            AND tw.release_year = tr.release_year
 ),
 
 trakt_genres_normalised AS (
     SELECT
         title_key,
         release_year,
-        STRING_AGG(
+        string_agg(
             gm.normalized_genre
             ORDER BY gm.normalized_genre
         ) AS genres_fr
-    FROM trakt_movies tm,
-        UNNEST(JSON_EXTRACT_ARRAY(tm.genres)) AS raw_genre_json
-    LEFT JOIN genre_mapping gm
-        ON lower(trim(JSON_VALUE(raw_genre_json))) = gm.raw_genre_key
+    FROM trakt_movies AS tm,
+        unnest(json_extract_array(tm.genres)) AS raw_genre_json
+    LEFT JOIN genre_mapping AS gm
+        ON lower(trim(json_value(raw_genre_json))) = gm.raw_genre_key
     WHERE gm.normalized_genre IS NOT NULL
     GROUP BY title_key, release_year
 ),
 
 title_year_unified AS (
     SELECT
-        COALESCE(mb.title_key, lb.title_key, tm.title_key)             AS title_key,
-        COALESCE(mb.release_year, lb.release_year, tm.release_year)    AS release_year,
-        mb.movie_id                                                    AS moviebuddy_movie_id,
-        lb.title_key IS NOT NULL                                       AS has_letterboxd,
-        tm.title_key IS NOT NULL                                       AS has_trakt,
-        mb.title_key IS NOT NULL                                       AS has_moviebuddy,
-        mb.title                                                       AS moviebuddy_title,
-        lb.film_name                                                   AS letterboxd_title,
-        tm.title                                                       AS trakt_title,
+        mb.movie_id AS moviebuddy_movie_id,
+        mb.title AS moviebuddy_title,
+        lb.film_name AS letterboxd_title,
+        tm.title AS trakt_title,
         mb.content_type,
-        mb.rating                                                      AS moviebuddy_rating,
+        mb.rating AS moviebuddy_rating,
         mb.directors,
         mb.primary_director_key,
-        mb.runtime_minutes                                             AS moviebuddy_runtime_minutes,
-        mb.tmdb_id                                                     AS moviebuddy_tmdb_id,
-        lb.first_watched_date                                          AS letterboxd_first_watched_date,
-        lb.last_watched_date                                           AS letterboxd_last_watched_date,
-        lb.watch_count                                                 AS letterboxd_watch_count,
+        mb.runtime_minutes AS moviebuddy_runtime_minutes,
+        mb.tmdb_id AS moviebuddy_tmdb_id,
+        lb.first_watched_date AS letterboxd_first_watched_date,
+        lb.last_watched_date AS letterboxd_last_watched_date,
+        lb.watch_count AS letterboxd_watch_count,
         lb.letterboxd_rating,
         lb.letterboxd_uri,
         tm.trakt_movie_id,
         tm.trakt_slug,
         tm.trakt_imdb_id,
         tm.trakt_tmdb_id,
-        tm.last_watched_at                                             AS trakt_last_watched_at,
-        tm.watch_count                                                 AS trakt_watch_count,
+        tm.last_watched_at AS trakt_last_watched_at,
+        tm.watch_count AS trakt_watch_count,
         tm.trakt_rating,
         tm.trakt_rating_raw,
         tm.trakt_rated_at,
-        tm.runtime_minutes                                             AS trakt_runtime_minutes,
-        tm.country                                                     AS trakt_country
-    FROM moviebuddy_keyed mb
-    FULL OUTER JOIN letterboxd_aggregated lb
-        ON  mb.title_key    = lb.title_key
-        AND mb.release_year = lb.release_year
-    FULL OUTER JOIN trakt_movies tm
-        ON  COALESCE(mb.title_key, lb.title_key)       = tm.title_key
-        AND COALESCE(mb.release_year, lb.release_year) = tm.release_year
+        tm.runtime_minutes AS trakt_runtime_minutes,
+        tm.country AS trakt_country,
+        coalesce(mb.title_key, lb.title_key, tm.title_key) AS title_key,
+        coalesce(mb.release_year, lb.release_year, tm.release_year) AS release_year,
+        lb.title_key IS NOT NULL AS has_letterboxd,
+        tm.title_key IS NOT NULL AS has_trakt,
+        mb.title_key IS NOT NULL AS has_moviebuddy
+    FROM moviebuddy_keyed AS mb
+    FULL OUTER JOIN letterboxd_aggregated AS lb
+        ON
+            mb.title_key = lb.title_key
+            AND mb.release_year = lb.release_year
+    FULL OUTER JOIN trakt_movies AS tm
+        ON
+            coalesce(mb.title_key, lb.title_key) = tm.title_key
+            AND coalesce(mb.release_year, lb.release_year) = tm.release_year
 ),
 
 source_resolved AS (
@@ -241,29 +244,9 @@ source_resolved AS (
 
 combined AS (
     SELECT
-        COALESCE(moviebuddy_title, trakt_title, letterboxd_title) AS title,
         content_type,
         sr.release_year,
-        COALESCE(
-            trakt_rating,
-            letterboxd_rating,
-            NULLIF(moviebuddy_rating, 0),
-            mr.manual_rating
-        )                                                        AS rating,
         directors,
-        COALESCE(mgn.genres_fr, tgn.genres_fr)                  AS genres,
-        COALESCE(moviebuddy_runtime_minutes, trakt_runtime_minutes) AS runtime_minutes,
-        COALESCE(moviebuddy_tmdb_id, trakt_tmdb_id)              AS tmdb_id,
-        CASE
-            WHEN letterboxd_first_watched_date IS NOT NULL THEN letterboxd_first_watched_date
-            WHEN trakt_last_watched_at IS NOT NULL THEN DATE(trakt_last_watched_at)
-        END                                                      AS first_watched_date,
-        CASE
-            WHEN letterboxd_last_watched_date IS NULL THEN DATE(trakt_last_watched_at)
-            WHEN trakt_last_watched_at IS NULL THEN letterboxd_last_watched_date
-            ELSE GREATEST(letterboxd_last_watched_date, DATE(trakt_last_watched_at))
-        END                                                      AS last_watched_date,
-        COALESCE(letterboxd_watch_count, 0) + COALESCE(trakt_watch_count, 0) AS watch_count,
         trakt_rating,
         trakt_rating_raw,
         trakt_rated_at,
@@ -272,6 +255,27 @@ combined AS (
         trakt_imdb_id,
         letterboxd_rating,
         letterboxd_uri,
+        source,
+        coalesce(moviebuddy_title, trakt_title, letterboxd_title) AS title,
+        coalesce(
+            trakt_rating,
+            letterboxd_rating,
+            nullif(moviebuddy_rating, 0),
+            mr.manual_rating
+        ) AS rating,
+        coalesce(mgn.genres_fr, tgn.genres_fr) AS genres,
+        coalesce(moviebuddy_runtime_minutes, trakt_runtime_minutes) AS runtime_minutes,
+        coalesce(moviebuddy_tmdb_id, trakt_tmdb_id) AS tmdb_id,
+        CASE
+            WHEN letterboxd_first_watched_date IS NOT NULL THEN letterboxd_first_watched_date
+            WHEN trakt_last_watched_at IS NOT NULL THEN date(trakt_last_watched_at)
+        END AS first_watched_date,
+        CASE
+            WHEN letterboxd_last_watched_date IS NULL THEN date(trakt_last_watched_at)
+            WHEN trakt_last_watched_at IS NULL THEN letterboxd_last_watched_date
+            ELSE greatest(letterboxd_last_watched_date, date(trakt_last_watched_at))
+        END AS last_watched_date,
+        coalesce(letterboxd_watch_count, 0) + coalesce(trakt_watch_count, 0) AS watch_count,
         CASE
             WHEN source IN (
                 'trakt_and_letterboxd_and_moviebuddy',
@@ -279,30 +283,32 @@ combined AS (
                 'trakt_and_moviebuddy',
                 'letterboxd_and_moviebuddy'
             ) THEN 'title_year'
-        END                                                      AS match_type,
-        COALESCE(cnf_director.country_fr, cnf_film.country_fr, dc.country, fc.country, trakt_country) AS country,
-        source
-    FROM source_resolved sr
-    LEFT JOIN moviebuddy_genres_normalised mgn
+        END AS match_type,
+        coalesce(cnf_director.country_fr, cnf_film.country_fr, dc.country, fc.country, trakt_country) AS country
+    FROM source_resolved AS sr
+    LEFT JOIN moviebuddy_genres_normalised AS mgn
         ON sr.moviebuddy_movie_id = mgn.movie_id
-    LEFT JOIN trakt_genres_normalised tgn
-        ON  sr.title_key    = tgn.title_key
-        AND sr.release_year = tgn.release_year
-    LEFT JOIN director_countries dc
+    LEFT JOIN trakt_genres_normalised AS tgn
+        ON
+            sr.title_key = tgn.title_key
+            AND sr.release_year = tgn.release_year
+    LEFT JOIN director_countries AS dc
         ON sr.primary_director_key = dc.director_key
-    LEFT JOIN country_name_fr cnf_director
+    LEFT JOIN country_name_fr AS cnf_director
         ON lower(trim(dc.country)) = cnf_director.country_key
-    LEFT JOIN film_countries fc
-        ON  sr.title_key    = fc.title_key
-        AND sr.release_year = fc.release_year
-    LEFT JOIN country_name_fr cnf_film
+    LEFT JOIN film_countries AS fc
+        ON
+            sr.title_key = fc.title_key
+            AND sr.release_year = fc.release_year
+    LEFT JOIN country_name_fr AS cnf_film
         ON lower(trim(fc.country)) = cnf_film.country_key
-    LEFT JOIN manual_ratings mr
-        ON  sr.title_key = mr.title_key
-        AND (
-            sr.primary_director_key = mr.creator_key
-            OR (sr.primary_director_key IS NULL AND mr.creator_key IS NULL)
-        )
+    LEFT JOIN manual_ratings AS mr
+        ON
+            sr.title_key = mr.title_key
+            AND (
+                sr.primary_director_key = mr.creator_key
+                OR (sr.primary_director_key IS NULL AND mr.creator_key IS NULL)
+            )
 )
 
 SELECT

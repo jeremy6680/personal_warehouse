@@ -18,16 +18,16 @@ source AS (
 
 renamed AS (
     SELECT
-        CAST(album_id AS STRING)   AS album_id,
-        name                  AS album_name,
+        cast(album_id AS STRING) AS album_id,
+        name AS album_name,
         artists,
         artist_ids,
         release_date,
         release_date_precision,
         genres,
-        SAFE_CAST(total_tracks AS INT64)   AS total_tracks,
         added_at,
-        _extracted_at
+        _extracted_at,
+        safe_cast(total_tracks AS INT64) AS total_tracks
     FROM source
 )
 

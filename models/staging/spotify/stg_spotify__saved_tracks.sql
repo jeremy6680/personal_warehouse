@@ -20,25 +20,25 @@ source AS (
 renamed AS (
     SELECT
         track_id,
-        name                                    AS track_name,
+        name AS track_name,
         artists,
         artist_ids,
         album_id,
         album_name,
         duration_ms,
         explicit,
-        SAFE_CAST(popularity AS INT64)          AS popularity,
         added_at,
+        _extracted_at,
         -- Audio features — NULL for new Spotify applications (endpoint deprecated Nov 2024)
-        SAFE_CAST(danceability AS FLOAT64)      AS danceability,
-        SAFE_CAST(energy AS FLOAT64)            AS energy,
-        SAFE_CAST(valence AS FLOAT64)           AS valence,
-        SAFE_CAST(tempo AS FLOAT64)             AS tempo,
-        SAFE_CAST(acousticness AS FLOAT64)      AS acousticness,
-        SAFE_CAST(instrumentalness AS FLOAT64)  AS instrumentalness,
-        SAFE_CAST(liveness AS FLOAT64)          AS liveness,
-        SAFE_CAST(speechiness AS FLOAT64)       AS speechiness,
-        _extracted_at
+        safe_cast(popularity AS INT64) AS popularity,
+        safe_cast(danceability AS FLOAT64) AS danceability,
+        safe_cast(energy AS FLOAT64) AS energy,
+        safe_cast(valence AS FLOAT64) AS valence,
+        safe_cast(tempo AS FLOAT64) AS tempo,
+        safe_cast(acousticness AS FLOAT64) AS acousticness,
+        safe_cast(instrumentalness AS FLOAT64) AS instrumentalness,
+        safe_cast(liveness AS FLOAT64) AS liveness,
+        safe_cast(speechiness AS FLOAT64) AS speechiness
     FROM source
 )
 

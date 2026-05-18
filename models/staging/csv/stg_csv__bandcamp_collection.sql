@@ -16,18 +16,18 @@ source AS (
 
 renamed AS (
     SELECT
-        SAFE_CAST(item_id AS INT64)         AS item_id,
-        CAST(item_type AS STRING)           AS item_type,
-        SAFE_CAST(tralbum_id AS INT64)      AS tralbum_id,
-        CAST(tralbum_type AS STRING)        AS tralbum_type,
-        NULLIF(trim(title), '')             AS title,
-        NULLIF(trim(artist), '')            AS artist,
-        CAST(item_url AS STRING)            AS item_url,
-        CAST(art_url AS STRING)             AS art_url,
-        CAST(token AS STRING)               AS token,
-        CAST(added_at AS STRING)            AS added_at,
-        CAST(raw_json AS STRING)            AS raw_json,
-        SAFE_CAST(_extracted_at AS TIMESTAMP) AS _extracted_at
+        cast(item_type AS STRING) AS item_type,
+        cast(tralbum_type AS STRING) AS tralbum_type,
+        cast(item_url AS STRING) AS item_url,
+        cast(art_url AS STRING) AS art_url,
+        cast(token AS STRING) AS token,
+        cast(added_at AS STRING) AS added_at,
+        cast(raw_json AS STRING) AS raw_json,
+        safe_cast(item_id AS INT64) AS item_id,
+        safe_cast(tralbum_id AS INT64) AS tralbum_id,
+        nullif(trim(title), '') AS title,
+        nullif(trim(artist), '') AS artist,
+        safe_cast(_extracted_at AS TIMESTAMP) AS _extracted_at
     FROM source
 ),
 
@@ -41,7 +41,7 @@ with_id AS (
 deduped AS (
     SELECT *
     FROM with_id
-    QUALIFY ROW_NUMBER() OVER (
+    QUALIFY row_number() OVER (
         PARTITION BY album_id
         ORDER BY _extracted_at DESC
     ) = 1

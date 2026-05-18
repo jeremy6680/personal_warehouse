@@ -47,19 +47,19 @@ anime AS (
 
 iso_codes AS (
     SELECT
-        lower(trim(country_name)) AS country_key,
-        iso_alpha3
+        iso_alpha3,
+        lower(trim(country_name)) AS country_key
     FROM {{ ref('country_iso_codes') }}
 ),
 
 books_spine AS (
     SELECT
         country,
-        'books'       AS domain,
-        book_id       AS item_id,
-        title         AS item_title,
-        author        AS person_name,
-        'author'      AS person_role,
+        'books' AS domain,
+        book_id AS item_id,
+        title AS item_title,
+        author AS person_name,
+        'author' AS person_role,
         rating
     FROM books
     WHERE country IS NOT NULL
@@ -68,13 +68,13 @@ books_spine AS (
 movies_spine AS (
     SELECT
         country,
-        'movies'                                                    AS domain,
-        movie_id                                                    AS item_id,
-        title                                                       AS item_title,
+        'movies' AS domain,
+        movie_id AS item_id,
+        title AS item_title,
         -- Primary director: first entry in comma-separated list
         -- Adapter note: SPLIT/SAFE_OFFSET is BigQuery — use split_part() on PostgreSQL
-        TRIM(SPLIT(directors, ',')[SAFE_OFFSET(0)])                 AS person_name,
-        'director'                                                  AS person_role,
+        trim(split(directors, ',')[safe_offset(0)]) AS person_name,
+        'director' AS person_role,
         rating
     FROM movies
     WHERE country IS NOT NULL
@@ -83,11 +83,11 @@ movies_spine AS (
 music_spine AS (
     SELECT
         country,
-        'music'       AS domain,
-        album_id      AS item_id,
-        title         AS item_title,
-        artist        AS person_name,
-        'artist'      AS person_role,
+        'music' AS domain,
+        album_id AS item_id,
+        title AS item_title,
+        artist AS person_name,
+        'artist' AS person_role,
         rating
     FROM music
     WHERE country IS NOT NULL
@@ -96,11 +96,11 @@ music_spine AS (
 manga_spine AS (
     SELECT
         country,
-        'manga'      AS domain,
-        manga_id     AS item_id,
-        title        AS item_title,
-        author       AS person_name,
-        'author'     AS person_role,
+        'manga' AS domain,
+        manga_id AS item_id,
+        title AS item_title,
+        author AS person_name,
+        'author' AS person_role,
         rating
     FROM manga
     WHERE country IS NOT NULL
@@ -109,11 +109,11 @@ manga_spine AS (
 anime_spine AS (
     SELECT
         country,
-        'anime'                                                     AS domain,
-        anime_id                                                    AS item_id,
-        title                                                       AS item_title,
-        TRIM(SPLIT(directors, ',')[SAFE_OFFSET(0)])                 AS person_name,
-        'director'                                                  AS person_role,
+        'anime' AS domain,
+        anime_id AS item_id,
+        title AS item_title,
+        trim(split(directors, ',')[safe_offset(0)]) AS person_name,
+        'director' AS person_role,
         rating
     FROM anime
     WHERE country IS NOT NULL
@@ -134,6 +134,6 @@ combined AS (
 SELECT
     c.*,
     iso.iso_alpha3
-FROM combined                                   AS c
-LEFT JOIN iso_codes                             AS iso
+FROM combined AS c
+LEFT JOIN iso_codes AS iso
     ON lower(trim(c.country)) = iso.country_key

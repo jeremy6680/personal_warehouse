@@ -14,14 +14,14 @@ source AS (
 
 renamed AS (
     SELECT
-        trim(`Title`)                                                                      AS title,
-        trim(`Content Type`)                                                               AS content_type,
-        safe_cast(`Release Year` AS INT64)                                                 AS release_year,
-        safe_cast(`Rating` AS FLOAT64)                                                     AS rating,
-        nullif(trim(`Directors`), '')                                                      AS directors,
-        nullif(trim(`Genres`), '')                                                         AS genres,
-        safe_cast(`Runtime` AS INT64)                                                      AS runtime_minutes,
-        safe_cast(`TMDB ID` AS INT64)                                                      AS tmdb_id
+        trim(`Title`) AS title,
+        trim(`Content Type`) AS content_type,
+        safe_cast(`Release Year` AS INT64) AS release_year,
+        safe_cast(`Rating` AS FLOAT64) AS rating,
+        nullif(trim(`Directors`), '') AS directors,
+        nullif(trim(`Genres`), '') AS genres,
+        safe_cast(`Runtime` AS INT64) AS runtime_minutes,
+        safe_cast(`TMDB ID` AS INT64) AS tmdb_id
     FROM source
 ),
 

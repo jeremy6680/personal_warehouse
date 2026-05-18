@@ -23,7 +23,6 @@ collection AS (
         title,
         content_type,
         release_year,
-        last_watched_date IS NOT NULL  AS is_watched,
         first_watched_date,
         last_watched_date,
         rating,
@@ -32,7 +31,8 @@ collection AS (
         runtime_minutes,
         tmdb_id,
         country,
-        source
+        source,
+        last_watched_date IS NOT NULL AS is_watched
     FROM source_data
 ),
 
