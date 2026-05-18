@@ -110,15 +110,15 @@ jobs:
         run: dbt compile
 
       # ── 10. Create CI dataset ────────────────────────────────────────────
-            # dbt does not auto-create the BigQuery dataset — we must create it first.
-            - name: Create CI BigQuery dataset
-              env:
-                GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
-              run: |
-                bq mk --dataset \
-                  --location=EU \
-                  ${{ secrets.GCP_PROJECT_ID }}:ci_pr_${{ github.event.pull_request.number }} \
-                  || true
+      # dbt does not auto-create the BigQuery dataset — we must create it first.
+      - name: Create CI BigQuery dataset
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
+        run: |
+          bq mk --dataset \
+            --location=EU \
+            ${{ secrets.GCP_PROJECT_ID }}:ci_pr_${{ github.event.pull_request.number }} \
+            || true
 
       # ── 11. dbt build ────────────────────────────────────────────────────
       # Run seeds → models → tests in dependency order, against the CI dataset.
