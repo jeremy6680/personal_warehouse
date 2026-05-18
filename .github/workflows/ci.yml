@@ -120,7 +120,24 @@ jobs:
             ${{ secrets.GCP_PROJECT_ID }}:ci_pr_${{ github.event.pull_request.number }} \
             || true
 
-      # ── 11. dbt build ────────────────────────────────────────────────────
+      # ── 11. Pre-create empty seed tables in BigQuery
+      - name: Pre-create empty seed tables in BigQuery
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
+        run: |
+          PROJECT=${{ secrets.GCP_PROJECT_ID }}
+          DATASET=ci_pr_${{ github.event.pull_request.number }}
+
+          bq mk --table ${PROJECT}:${DATASET}.manga_author_countries \
+            author:STRING,country:STRING
+
+          bq mk --table ${PROJECT}:${DATASET}.anime_director_countries \
+            director:STRING,country:STRING
+
+          bq mk --table ${PROJECT}:${DATASET}.manual_ratings \
+            domain:STRING,title:STRING,author_or_director_or_artist:STRING,rating:FLOAT64,rated_at:DATE
+
+      # ── 12. dbt build ────────────────────────────────────────────────────
       # Run seeds → models → tests in dependency order, against the CI dataset.
       # This actually executes SQL on BigQuery — creates views and tables in ci_pr_<N>.
       # `--fail-fast` stops at the first failure instead of running everything.
@@ -130,7 +147,7 @@ jobs:
           dbt run --fail-fast --exclude int_manga__unified int_anime__unified
           dbt test --fail-fast --exclude seed:manual_ratings seed:manga_author_countries seed:anime_director_countries
 
-      # ── 12. Cleanup CI dataset ───────────────────────────────────────────
+      # ── 13. Cleanup CI dataset ───────────────────────────────────────────
       # Drop the temporary CI dataset to avoid accumulating clutter and costs.
       # `if: always()` means this step runs even if previous steps failed.
       # `bq` CLI is pre-installed on GitHub ubuntu-latest runners.
