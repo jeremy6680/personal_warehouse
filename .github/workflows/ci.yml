@@ -124,7 +124,7 @@ jobs:
       # Run seeds → models → tests in dependency order, against the CI dataset.
       # This actually executes SQL on BigQuery — creates views and tables in ci_pr_<N>.
       # `--fail-fast` stops at the first failure instead of running everything.
-    - name: Build and test dbt models
+     - name: Build and test dbt models
         run: |
           dbt seed --full-refresh
           dbt run --fail-fast
