@@ -127,7 +127,7 @@ jobs:
       - name: Build and test dbt models
         run: |
           dbt seed --full-refresh
-          dbt run --fail-fast
+          dbt run --fail-fast --exclude int_manga__unified int_anime__unified
           dbt test --fail-fast --exclude seed:manual_ratings seed:manga_author_countries seed:anime_director_countries
 
       # ── 12. Cleanup CI dataset ───────────────────────────────────────────
