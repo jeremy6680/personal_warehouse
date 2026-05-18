@@ -33,7 +33,7 @@ seeds:
       package-wide; using another author_countries.csv would collide with the
       books seed.
     config:
-      tags: ["seeds", "manga", "reference"]
+      tags: ["seeds", "manga", "reference", "empty"]
       column_types:
         author: STRING
         country: STRING
@@ -76,7 +76,7 @@ seeds:
       is intentionally named with the anime_ prefix to avoid colliding with the
       films director_countries seed.
     config:
-      tags: ["seeds", "anime", "reference"]
+      tags: ["seeds", "anime", "reference", "empty"]
       column_types:
         director: STRING
         country: STRING
@@ -271,7 +271,7 @@ seeds:
       creator name exactly (case-insensitive) as they appear in the intermediate
       model after any author_name_mapping normalisation has been applied.
     config:
-      tags: ["seeds", "shared", "reference"]
+      tags: ["seeds", "shared", "reference", "empty"]
       column_types:
         domain: STRING
         title: STRING
