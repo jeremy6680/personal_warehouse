@@ -165,7 +165,7 @@ jobs:
         run: |
           dbt seed --full-refresh --exclude manga_author_countries anime_director_countries manual_ratings
           dbt run --fail-fast --vars '{"ci": true}'
-          dbt test --fail-fast --exclude seed:manual_ratings seed:manga_author_countries seed:anime_director_countries
+          dbt test --fail-fast --exclude manga_author_countries anime_director_countries manual_ratings
 
       # ── 13. Cleanup CI dataset ───────────────────────────────────────────
       # Drop the temporary CI dataset to avoid accumulating clutter and costs.
