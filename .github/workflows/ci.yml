@@ -109,27 +109,27 @@ jobs:
       - name: Compile dbt project
         run: dbt compile
 
-      # ── 10. Create CI dataset ────────────────────────────────────────────
-      # dbt does not auto-create the BigQuery dataset — we must create it first.
-      - name: Create CI BigQuery dataset
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcp-key.json
-        run: |
-          bq mk --dataset \
-            --location=EU \
-            ${{ secrets.GCP_PROJECT_ID }}:ci_pr_${{ github.event.pull_request.number }} \
-            || true
-
-      # ── 11. Pre-create empty seed tables in BigQuery
-      - name: Pre-create empty seed tables
+      # ── 10. Create CI dataset and seed tables ─────────────────────────────
+      # Use the BigQuery Python client to:
+      #   1. Create a new dataset named ci_pr_<PR_number>
+      #   2. Create empty tables with the correct schema for all seeds
+      # This ensures the dbt seed step has the necessary tables to insert into.
+      - name: Create CI dataset and pre-create empty seed tables
         run: |
           python - <<'EOF'
           from google.cloud import bigquery
-          import os
+          import os, time
 
           os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/gcp-key.json"
           client = bigquery.Client(project="${{ secrets.GCP_PROJECT_ID }}")
-          dataset = "ci_pr_${{ github.event.pull_request.number }}"
+          dataset_id = "ci_pr_${{ github.event.pull_request.number }}"
+
+          # Create dataset
+          dataset = bigquery.Dataset(f"{client.project}.{dataset_id}")
+          dataset.location = "EU"
+          client.create_dataset(dataset, exists_ok=True)
+          print(f"Dataset ready: {dataset_id}")
+          time.sleep(5)
 
           tables = {
               "manga_author_countries": [
@@ -150,10 +150,9 @@ jobs:
           }
 
           for table_id, schema in tables.items():
-              ref = f"{client.project}.{dataset}.{table_id}"
+              ref = f"{client.project}.{dataset_id}.{table_id}"
               table = bigquery.Table(ref, schema=schema)
               client.create_table(table, exists_ok=True)
-              # Wait for the table to be fully available
               client.get_table(ref)
               print(f"Ready: {ref}")
           EOF
