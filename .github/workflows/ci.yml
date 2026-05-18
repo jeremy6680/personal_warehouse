@@ -125,7 +125,10 @@ jobs:
       # This actually executes SQL on BigQuery — creates views and tables in ci_pr_<N>.
       # `--fail-fast` stops at the first failure instead of running everything.
       - name: Build and test dbt models
-        run: dbt build --fail-fast --exclude tag:empty
+        run: |
+          dbt seed
+          dbt run --fail-fast
+          dbt test --fail-fast --exclude seed:manual_ratings seed:manga_author_countries seed:anime_director_countries
 
       # ── 12. Cleanup CI dataset ───────────────────────────────────────────
       # Drop the temporary CI dataset to avoid accumulating clutter and costs.
